@@ -10,9 +10,14 @@ import org.broadinstitute.sting.queue.extensions.picard.{MergeSamFiles, SortSam}
 import net.sf.samtools.SAMFileHeader.SortOrder
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypeLikelihoodsCalculationModel
 import org.broadinstitute.variant.variantcontext.VariantContext
-import java.io.PrintWriter
+import java.io.{IOException, PrintWriter}
 import org.apache.commons.io.{FileUtils, IOUtils}
 import java.util
+import net.sf.samtools.SAMFileReader
+
+import scala.collection.JavaConversions._
+import org.broadinstitute.sting.utils.exceptions.UserException
+import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
 
 class GenerateBenchmark extends QScript with Logging {
     qscript =>
@@ -27,6 +32,9 @@ class GenerateBenchmark extends QScript with Logging {
     val INDIV2 = "NA12891"
 
     val libDir: File = new File(".")
+
+    @Input(doc = "Base bam files", required = false)
+    var bams: Seq[File] = Nil
 
     @Input(doc = "Directory to locate output files in", shortName = "o", required = false)
     var output_dir: File = new File(libDir)
@@ -63,7 +71,12 @@ class GenerateBenchmark extends QScript with Logging {
     val PIECES = 6
 
     //the last library in the list is considered the "normal"
-    val LIBRARIES = List("Solexa-18484", "Solexa-23661", "Solexa-18483")
+    lazy val LIBRARIES =  bams match {
+        case Nil => List("Solexa-18484", "Solexa-23661", "Solexa-18483")
+        case something => something.flatMap(getLibraryNames).distinct
+    }
+
+
 
     def script() = {
 
@@ -463,6 +476,19 @@ class GenerateBenchmark extends QScript with Logging {
         }
 
     }
+
+
+    def getLibraryNames(bam: File)= {
+        try{
+            val reader: SAMFileReader = new SAMFileReader(bam)
+            val libraries = reader.getFileHeader.getReadGroups.map(_.getLibrary).distinct
+            libraries
+        } catch {
+            case e: IOException => throw new UserException.CouldNotReadInputFile(bam, "Couldn't determine library names.", e)
+        }
+    }
+
+
 }
 
 
