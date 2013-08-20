@@ -33,7 +33,7 @@ class GenerateBenchmark extends QScript with Logging {
 
     val libDir: File = new File(".")
 
-    @Input(doc = "Base bam files", required = false)
+    @Input(fullName ="input_bams", shortName="I", doc = "Base bam files", required = false)
     var bams: Seq[File] = Nil
 
     @Input(doc = "Directory to locate output files in", shortName = "o", required = false)
@@ -80,7 +80,7 @@ class GenerateBenchmark extends QScript with Logging {
 
     def script() = {
 
-
+        logger.info("Libraries are: "+  LIBRARIES.toString())
 
 
         //fracture bams
