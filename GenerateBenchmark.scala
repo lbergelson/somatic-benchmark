@@ -66,12 +66,12 @@ class GenerateBenchmark extends QScript with Logging {
     //Used by make_fn_data
     val alleleFractions = Set(0.04, .1, .2, .4, .8)
     val maxDepth = "123456789ABC"
-    val depths = for (i <- 1 to maxDepth.length) yield maxDepth.substring(0, i)
+    val depths = allLengthsOfSlice(maxDepth)
 
     val PIECES = 6
 
     //the last library in the list is considered the "normal"
-    lazy val LIBRARIES =  bams match {
+    lazy val libraries =  bams match {
         case Nil => List("Solexa-18484", "Solexa-23661", "Solexa-18483")
         case something => something.flatMap(getLibraryNames).distinct
     }
@@ -80,12 +80,12 @@ class GenerateBenchmark extends QScript with Logging {
 
     def script() = {
 
-        logger.info("Libraries are: "+  LIBRARIES.toString())
+        logger.info("Libraries are: "+  libraries.toString())
 
 
         //fracture bams
         val fractureOutDir = new File(output_dir, "data_1g_wgs")
-        val (splitBams, fractureCmds) = FractureBams.makeFractureJobs(bam, referenceFile, LIBRARIES, PIECES, fractureOutDir)
+        val (splitBams, fractureCmds) = FractureBams.makeFractureJobs(bam, referenceFile, libraries, PIECES, fractureOutDir)
         fractureCmds.foreach(add(_))
 
         qscript.bamNameToFileMap = splitBams.map((bam: File) => (bam.getName, bam)).toMap
@@ -230,32 +230,20 @@ class GenerateBenchmark extends QScript with Logging {
 
     object MergeBams {
         private val outFileNameTemplate = INDIV1+".somatic.simulation.merged.%s.bam"
-        private lazy val BAMGROUPS = if (is_test) {
-            List("123456789ABC", "DEFGHI")
+        private lazy val BAMGROUPS: Seq[String] = if (is_test) {
+            List(allSamples(tumorLibraries).mkString(""), allSamples(normalLibraries).mkString(""))
         } else {
-            List("123456789ABC",
-                "123456789AB",
-                "123456789A",
-                "123456789",
-                "12345678",
-                "1234567",
-                "123456",
-                "12345",
-                "1234",
-                "123",
-                "12",
-                "1",
-                "DEFGHI",
-                "DEFGH",
-                "DEFG",
-                "DEF",
-                "DE",
-                "FG",
-                "HI",
-                "D")
+            val tumors: Seq[String] = allLengthsOfSlice(allSamples(tumorLibraries))
+            val normals: Seq[String] = allLengthsOfSlice(allSamples(normalLibraries))
+            tumors++normals
         }
 
+
         def makeMergeBamsJobs(dir: File) = {
+            logger.debug("Tumor file names: "+ allSamples(tumorLibraries).mkString(",%n".format()))
+            logger.debug("Normal file names: "+ allSamples(normalLibraries).mkString(",%n".format()))
+
+            logger.debug("BAMGROUPS="+ BAMGROUPS.mkString(",%n".format()))
             BAMGROUPS.map {
                 name =>
                     val mergedFile = new File(dir, outFileNameTemplate.format(name))
@@ -312,6 +300,27 @@ class GenerateBenchmark extends QScript with Logging {
         }
     }
 
+    def tumorLibraries = {
+        libraries.dropRight(1)
+    }
+
+    def normalLibraries = {
+        libraries.takeRight(1)
+    }
+
+    def allLengthsOfSlice(seq: Seq[Char])={
+        for {
+            length <- 1 to seq.length
+        } yield (seq.slice(0,length).mkString(""))
+    }
+
+    def allSamples(libraries: Seq[String]):Seq[Char] = {
+        for {
+            library  <- libraries
+            piece <- 1 to PIECES
+        } yield (calculateDigit(library,piece))
+    }
+
     /**
      * Returns a list of bams that correspond to the encoded digitString.
      * Each digit in the string maps to specific bam.  Each library is split into multiple files and there is a unique digit
@@ -331,21 +340,32 @@ class GenerateBenchmark extends QScript with Logging {
         }
     }
 
+    /** Convert the combination of library / string into a unique character
+      * /
+      * @param library
+      * @param piece
+      * @return
+      */
+    def calculateDigit(library: String, piece: Int) = {
+        val digits = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        val index = libraries.indexOf(library) * PIECES + piece - 1
+        digits.charAt(index)
+    }
+
+
+
     def generateBamMap: Map[Char, String] = {
-        //Convert the combination of library / string into a unique character
-        def calculateDigit(library: String, piece: Int) = {
-            val digits = "123456789ABCDEFGHI"
-            val index = LIBRARIES.indexOf(library) * PIECES + piece - 1
-            digits.charAt(index)
+
+        if (PIECES > 6 || libraries.size > 3) throw new UnsupportedOperationException("Currently only supported for PIECES <= 6 and LIBRARIES.size <= 3")
+
+        def mapLibraryPieces[T](f: (String, Int) => T): Seq[T] = {
+            for {
+                library <- libraries
+                piece <- 1 to PIECES
+            } yield (f(library, piece))
         }
 
-
-        if (PIECES > 6 || LIBRARIES.size > 3) throw new UnsupportedOperationException("Currently only supported for PIECES <= 6 and LIBRARIES.size <= 3")
-
-        val mappings = for {
-            library <- LIBRARIES
-            piece <- 1 to PIECES
-        } yield (calculateDigit(library, piece), getSplitFileName(library, piece, "bam"))
+        val mappings = mapLibraryPieces((library, piece) => (calculateDigit(library, piece), getSplitFileName(library, piece, "bam")))
 
         mappings.toMap
 
