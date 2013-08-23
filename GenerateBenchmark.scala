@@ -43,10 +43,10 @@ class GenerateBenchmark extends QScript with Logging {
     var no_spike: Boolean = false
 
     @Argument(fullName = "indel_spike_in", shortName="indels",doc = "Perform indel spike in", required = false)
-    var indels: Boolean = true;
+    var indels: Boolean = true
 
     @Argument(fullName = "point_mutation_spike_in", shortName = "snps", doc = "Perform point mutation spike in", required = false)
-    var snps: Boolean = false;
+    var snps: Boolean = false
 
 
 
@@ -69,6 +69,8 @@ class GenerateBenchmark extends QScript with Logging {
     lazy val SAMPLE_NAME_PREFIX = primaryIndividual+".WGS"
     val prefix = "chr1"
 
+    lazy val tumorFiles = allLibrarySplitFiles(tumorLibraries)
+    lazy val normalFiles = allLibrarySplitFiles(normalLibraries)
 
     def script() = {
 
@@ -94,7 +96,7 @@ class GenerateBenchmark extends QScript with Logging {
             val makeFnCommands = new FalseNegativeSim(spikeSitesVCF, spikeContributorBAM)
 
             val alleleFractions = Set(0.04, .1, .2, .4, .8)
-            val depths = allLengthsOfSlice(tumorFiles)
+            val depths = if(is_test) List(tumorFiles.mkString("")) else allLengthsOfSlice(tumorFiles)
             val (_,falseNegativeCmds) = makeFnCommands.makeFnSimCmds(alleleFractions, depths)
             falseNegativeCmds.foreach(add(_))
         }
@@ -182,7 +184,7 @@ class GenerateBenchmark extends QScript with Logging {
                     sort
                 }
 
-                val libraryFiltered = new File(outDir, SAMPLE_NAME_PREFIX + ".original.regional.filtered.%s.bam".format(libraryName))
+                val libraryFiltered = new File(outDir, primaryIndividual + ".original.filtered.%s.bam".format(libraryName))
                 val filter = new FilterByLibrary {
                     this.memoryLimit = 2
                     this.library = libraryName
@@ -191,7 +193,7 @@ class GenerateBenchmark extends QScript with Logging {
                     this.isIntermediate = true
                 }
 
-                val sortedBam = new File(outDir, SAMPLE_NAME_PREFIX + ".original.regional.namesorted.%s.bam".format(libraryName))
+                val sortedBam = new File(outDir, primaryIndividual + ".original.namesorted.%s.bam".format(libraryName))
                 val sort = new SortSam with BaseArguments {
                     this.memoryLimit = 16
                     this.maxRecordsInRam = 4000000
@@ -226,7 +228,7 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     object MergeBams {
-        private val outFileNameTemplate = primaryIndividual+".somatic.simulation.merged.%s.bam"
+        private val outFileNameTemplate = primaryIndividual+".%s.bam"
         private lazy val BAMGROUPS: Seq[String] = if (is_test) {
             List(tumorFiles.mkString(""), normalFiles.mkString(""))
         } else {
@@ -295,10 +297,6 @@ class GenerateBenchmark extends QScript with Logging {
         }
     }
 
-
-    lazy val tumorFiles = allLibrarySplitFiles(tumorLibraries)
-    lazy val normalFiles = allLibrarySplitFiles(normalFiles)
-
     def tumorLibraries = {
         libraries.dropRight(1)
     }
@@ -310,22 +308,20 @@ class GenerateBenchmark extends QScript with Logging {
     def allLengthsOfSlice(seq: Seq[Char])={
         for {
             length <- 1 to seq.length
-        } yield (seq.slice(0,length).mkString(""))
+        } yield seq.slice(0, length).mkString("")
     }
 
     def allLibrarySplitFiles(libraries: Seq[String]):Seq[Char] = {
         for {
             library  <- libraries
             piece <- 1 to PIECES
-        } yield (calculateDigit(library,piece))
+        } yield calculateDigit(library, piece)
     }
 
     /**
      * Returns a list of bams that correspond to the encoded digitString.
      * Each digit in the string maps to specific bam.  Each library is split into multiple files and there is a unique digit
      * assigned to each file.
-     * @param digitString
-     * @return
      */
     def getBams(digitString: String): List[File] = {
         val bamDigitToNameMap = generateBamMap
@@ -340,12 +336,8 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     /** Convert the combination of library / string into a unique character
-      * /
-      * @param library
-      * @param piece
-      * @return
       */
-    def calculateDigit(library: String, piece: Int) = {
+    def calculateDigit(library: String, piece: Int): Char = {
         val digits = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         val index = libraries.indexOf(library) * PIECES + piece - 1
         digits.charAt(index)
@@ -361,7 +353,7 @@ class GenerateBenchmark extends QScript with Logging {
             for {
                 library <- libraries
                 piece <- 1 to PIECES
-            } yield (f(library, piece))
+            } yield f(library, piece)
         }
 
         val mappings = mapLibraryPieces((library, piece) => (calculateDigit(library, piece), getSplitFileName(library, piece, "bam")))
@@ -371,7 +363,7 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     def getSplitFileName(library: String, piece: Int, extension: String) = {
-        val fileNameTemplate = SAMPLE_NAME_PREFIX + ".somatic.simulation.%s.%03d.%s"
+        val fileNameTemplate = primaryIndividual + ".split.%s.%03d.%s"
         fileNameTemplate.format(library, piece, extension)
     }
 
