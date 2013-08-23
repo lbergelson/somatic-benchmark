@@ -66,9 +66,6 @@ class GenerateBenchmark extends QScript with Logging {
 
     val intervalFile = new File(libDir, "benchmark.interval_list")
 
-    lazy val SAMPLE_NAME_PREFIX = primaryIndividual+".WGS"
-    val prefix = "chr1"
-
     lazy val tumorFiles = allLibrarySplitFiles(tumorLibraries)
     lazy val normalFiles = allLibrarySplitFiles(normalLibraries)
 
@@ -322,6 +319,8 @@ class GenerateBenchmark extends QScript with Logging {
      * Returns a list of bams that correspond to the encoded digitString.
      * Each digit in the string maps to specific bam.  Each library is split into multiple files and there is a unique digit
      * assigned to each file.
+     * @param digitString
+     * @return
      */
     def getBams(digitString: String): List[File] = {
         val bamDigitToNameMap = generateBamMap
