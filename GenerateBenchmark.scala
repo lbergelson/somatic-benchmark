@@ -25,7 +25,7 @@ class GenerateBenchmark extends QScript with Logging {
     val indelFile: File = new File("/humgen/1kg/DCC/ftp/technical/working/20130610_ceu_hc_trio/broad/CEU.wgs.HaplotypeCaller_bi.20130520.snps_indels.high_coverage_pcr_free.genotypes.vcf.gz")
     val referenceFile: File = new File("/humgen/1kg/reference/human_g1k_v37_decoy.fasta")
 
-      val libDir: File = new File(".")
+    val libDir: File = new File(".")
 
     @Input(fullName ="input_bams", shortName="I", doc = "Base bam files")
     var bams: Seq[File] = Nil
@@ -52,18 +52,10 @@ class GenerateBenchmark extends QScript with Logging {
 
     var bamNameToFileMap: Map[String, File] = null
 
-
-    //Used by make_fn_data
-    val alleleFractions = Set(0.04, .1, .2, .4, .8)
-    val maxDepth = "123456789ABC"
-    val depths = allLengthsOfSlice(maxDepth)
-
     val PIECES = 6
 
     //the last library in the list is considered the "normal"
     lazy val libraries = getLibraries(bams)
-
-
 
     lazy val primaryIndividual = bams.map(getIndividualName).distinct match {
         case names if names.length == 1 => names(0)
@@ -71,10 +63,6 @@ class GenerateBenchmark extends QScript with Logging {
             .format(names.length, names.mkString(",")))
     }
     lazy val spikeInIndividual = getIndividualName(spikeContributorBAM)
-
-    lazy val vcfDataDir = new File(output_dir, "vcf_data")
-    lazy val spikeSitesVCF = new File(vcfDataDir, "%s_Ref_%s_Het.vcf".format(primaryIndividual, spikeInIndividual) )
-
 
     val intervalFile = new File(libDir, "benchmark.interval_list")
 
@@ -102,7 +90,11 @@ class GenerateBenchmark extends QScript with Logging {
             vcfMakers.foreach(add(_))
 
             //use SomaticSpike to create false negative test data
+            val spikeSitesVCF = new File(vcfDir, "%s_Ref_%s_Het.vcf".format(primaryIndividual, spikeInIndividual) )
             val makeFnCommands = new FalseNegativeSim(spikeSitesVCF, spikeContributorBAM)
+
+            val alleleFractions = Set(0.04, .1, .2, .4, .8)
+            val depths = allLengthsOfSlice(tumorFiles)
             val (_,falseNegativeCmds) = makeFnCommands.makeFnSimCmds(alleleFractions, depths)
             falseNegativeCmds.foreach(add(_))
         }
@@ -236,17 +228,15 @@ class GenerateBenchmark extends QScript with Logging {
     object MergeBams {
         private val outFileNameTemplate = primaryIndividual+".somatic.simulation.merged.%s.bam"
         private lazy val BAMGROUPS: Seq[String] = if (is_test) {
-            List(allSamples(tumorLibraries).mkString(""), allSamples(normalLibraries).mkString(""))
+            List(tumorFiles.mkString(""), normalFiles.mkString(""))
         } else {
-            val tumors: Seq[String] = allLengthsOfSlice(allSamples(tumorLibraries))
-            val normals: Seq[String] = allLengthsOfSlice(allSamples(normalLibraries))
+            val tumors: Seq[String] = allLengthsOfSlice(tumorFiles)
+            val normals: Seq[String] = allLengthsOfSlice(normalFiles)
             tumors++normals
         }
 
 
         def makeMergeBamsJobs(dir: File) = {
-            logger.debug("Tumor file names: "+ allSamples(tumorLibraries).mkString(",%n".format()))
-            logger.debug("Normal file names: "+ allSamples(normalLibraries).mkString(",%n".format()))
 
             logger.debug("BAMGROUPS="+ BAMGROUPS.mkString(",%n".format()))
             BAMGROUPS.map {
@@ -305,6 +295,10 @@ class GenerateBenchmark extends QScript with Logging {
         }
     }
 
+
+    lazy val tumorFiles = allLibrarySplitFiles(tumorLibraries)
+    lazy val normalFiles = allLibrarySplitFiles(normalFiles)
+
     def tumorLibraries = {
         libraries.dropRight(1)
     }
@@ -319,7 +313,7 @@ class GenerateBenchmark extends QScript with Logging {
         } yield (seq.slice(0,length).mkString(""))
     }
 
-    def allSamples(libraries: Seq[String]):Seq[Char] = {
+    def allLibrarySplitFiles(libraries: Seq[String]):Seq[Char] = {
         for {
             library  <- libraries
             piece <- 1 to PIECES
