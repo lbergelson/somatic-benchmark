@@ -17,7 +17,6 @@ import net.sf.samtools.SAMFileReader
 
 import scala.collection.JavaConversions._
 import org.broadinstitute.sting.utils.exceptions.UserException
-import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
 
 class GenerateBenchmark extends QScript with Logging {
     qscript =>
@@ -26,10 +25,7 @@ class GenerateBenchmark extends QScript with Logging {
     val indelFile: File = new File("/humgen/1kg/DCC/ftp/technical/working/20130610_ceu_hc_trio/broad/CEU.wgs.HaplotypeCaller_bi.20130520.snps_indels.high_coverage_pcr_free.genotypes.vcf.gz")
     val referenceFile: File = new File("/humgen/1kg/reference/human_g1k_v37_decoy.fasta")
 
-    val INDIV1 = "NA12878"
-    val INDIV2 = "NA12891"
-
-    val libDir: File = new File(".")
+      val libDir: File = new File(".")
 
     @Input(fullName ="input_bams", shortName="I", doc = "Base bam files")
     var bams: Seq[File] = Nil
@@ -52,14 +48,7 @@ class GenerateBenchmark extends QScript with Logging {
     @Argument(fullName = "point_mutation_spike_in", shortName = "snps", doc = "Perform point mutation spike in", required = false)
     var snps: Boolean = false;
 
-    lazy val vcfDataDir = new File(output_dir, "vcf_data")
-    lazy val spikeSitesVCF = new File(vcfDataDir, "%s_Ref_%s_Het.vcf".format(INDIV1, INDIV2) )
 
-
-    val intervalFile = new File(libDir, "benchmark.interval_list")
-
-    val SAMPLE_NAME_PREFIX = INDIV1+".WGS"
-    val prefix = "chr1"
 
     var bamNameToFileMap: Map[String, File] = null
 
@@ -72,16 +61,31 @@ class GenerateBenchmark extends QScript with Logging {
     val PIECES = 6
 
     //the last library in the list is considered the "normal"
-    lazy val libraries =  bams match {
-        case Nil => List("Solexa-18484", "Solexa-23661", "Solexa-18483")
-        case something => something.flatMap(getLibraryNames).distinct
-    }
+    lazy val libraries = getLibraries(bams)
 
+
+
+    lazy val primaryIndividual = bams.map(getIndividualName).distinct match {
+        case names if names.length == 1 => names(0)
+        case names => throw new UserException.BadInput("Expected only 1 individual in input bams, but found %d. (%s)"
+            .format(names.length, names.mkString(",")))
+    }
+    lazy val spikeInIndividual = getIndividualName(spikeContributorBAM)
+
+    lazy val vcfDataDir = new File(output_dir, "vcf_data")
+    lazy val spikeSitesVCF = new File(vcfDataDir, "%s_Ref_%s_Het.vcf".format(primaryIndividual, spikeInIndividual) )
+
+
+    val intervalFile = new File(libDir, "benchmark.interval_list")
+
+    lazy val SAMPLE_NAME_PREFIX = primaryIndividual+".WGS"
+    val prefix = "chr1"
 
 
     def script() = {
 
         logger.info("Libraries are: "+  libraries.toString())
+        logger.info("Individuals are %s and %s".format(primaryIndividual, spikeInIndividual))
 
 
         //fracture bams
@@ -230,7 +234,7 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     object MergeBams {
-        private val outFileNameTemplate = INDIV1+".somatic.simulation.merged.%s.bam"
+        private val outFileNameTemplate = primaryIndividual+".somatic.simulation.merged.%s.bam"
         private lazy val BAMGROUPS: Seq[String] = if (is_test) {
             List(allSamples(tumorLibraries).mkString(""), allSamples(normalLibraries).mkString(""))
         } else {
@@ -296,7 +300,7 @@ class GenerateBenchmark extends QScript with Logging {
         }
 
         private def deriveBamName(alleleFraction: Double, depth: String): String = {
-            val bamNameTemplate = INDIV1+"_%s_"+INDIV2+"_%s_spikein.bam"
+            val bamNameTemplate = primaryIndividual+"_%s_"+spikeInIndividual+"_%s_spikein.bam"
             bamNameTemplate.format(depth, alleleFraction)
         }
     }
@@ -433,7 +437,7 @@ class GenerateBenchmark extends QScript with Logging {
                 val genotyper = new UnifiedGenotyper with GeneratorArguments {
                     this.scatterCount=4
                     this.input_file :+= qscript.spikeContributorBAM
-                    this.input_file.addAll( qscript.bams )
+                    this.input_file = qscript.bams
                     this.genotyping_mode = GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES
                     this.alleles = new TaggedFile(indelFile, "VCF")
                     this.o = genotyperOutputVCF
@@ -474,16 +478,16 @@ class GenerateBenchmark extends QScript with Logging {
                     required(intervals)
             }
 
-            val refAndHetVcf = new File(outputDir, INDIV1+"_Ref_"+INDIV2+"_Het.vcf")
-            val hetOrHomVcf = new File(outputDir, INDIV1+"_Het_Or_HomeNonRef.vcf")
+            val refAndHetVcf = new File(outputDir, primaryIndividual+"_Ref_"+spikeInIndividual+"_Het.vcf")
+            val hetOrHomVcf = new File(outputDir, primaryIndividual+"_Het_Or_HomeNonRef.vcf")
 
             val genotyper = makeUnifiedGenotyperJob
-            val selectFirstRefSecondHet = makeSelectVariants(refAndHetVcf, Seq( "vc.getGenotype(\""+INDIV1+"\").isHomRef()"
-                                                                               +" && vc.getGenotype(\""+INDIV2+"\").isHet()"
-                                                                               +" && vc.getGenotype(\""+INDIV2+"\").getPhredScaledQual() > 50"
+            val selectFirstRefSecondHet = makeSelectVariants(refAndHetVcf, Seq( "vc.getGenotype(\""+primaryIndividual+"\").isHomRef()"
+                                                                               +" && vc.getGenotype(\""+spikeInIndividual+"\").isHet()"
+                                                                               +" && vc.getGenotype(\""+spikeInIndividual+"\").getPhredScaledQual() > 50"
                                                                                +" && QUAL > 50") )
-            val selectHetOrHomNonRef = makeSelectVariants(hetOrHomVcf, Seq("!vc.getGenotype(\""+INDIV1+"\").isHomRef()"
-                                                                          +" && vc.getGenotype(\""+INDIV1+"\").getPhredScaledQual() > 50"
+            val selectHetOrHomNonRef = makeSelectVariants(hetOrHomVcf, Seq("!vc.getGenotype(\""+primaryIndividual+"\").isHomRef()"
+                                                                          +" && vc.getGenotype(\""+primaryIndividual+"\").getPhredScaledQual() > 50"
                                                                           +" && QUAL > 50" ) )
 
 
@@ -498,6 +502,14 @@ class GenerateBenchmark extends QScript with Logging {
 
     }
 
+    def getLibraries(bams: Seq[File]) = {
+        val libraries = bams.flatMap(getLibraryNames).distinct
+        libraries.size match{
+            case 0 | 1 => throw new UserException.BadInput("At least 2 libraries are required." )
+            case _ => libraries
+        }
+    }
+
 
     def getLibraryNames(bam: File)= {
         try{
@@ -506,6 +518,23 @@ class GenerateBenchmark extends QScript with Logging {
             libraries
         } catch {
             case e: IOException => throw new UserException.CouldNotReadInputFile(bam, "Couldn't determine library names.", e)
+        }
+    }
+
+
+    def getIndividualName(bam: File)= {
+        try {
+            val reader: SAMFileReader = new SAMFileReader(bam)
+            val sample = reader.getFileHeader.getReadGroups.map(_.getSample).distinct
+
+            sample.length match {
+                case 0 => throw new UserException.BadInput("Could not determine any sample name in %s".format(bam.getAbsolutePath))
+                case 1 => sample.head
+                case num => throw new UserException.BadInput("Expecting only a single sample from %s, found %d".format(bam.getAbsolutePath, num))
+            }
+
+        } catch {
+            case e: IOException => throw new UserException.CouldNotReadInputFile(bam, "Couldn't determine sample name.", e)
         }
     }
 
