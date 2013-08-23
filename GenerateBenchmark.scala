@@ -25,16 +25,17 @@ class GenerateBenchmark extends QScript with Logging {
     //TODO implement these as cmdline parameters instead of hard coding them
     val indelFile: File = new File("/humgen/1kg/DCC/ftp/technical/working/20130610_ceu_hc_trio/broad/CEU.wgs.HaplotypeCaller_bi.20130520.snps_indels.high_coverage_pcr_free.genotypes.vcf.gz")
     val referenceFile: File = new File("/humgen/1kg/reference/human_g1k_v37_decoy.fasta")
-    val bam: File = new File("/humgen/gsa-hpprojects/NA12878Collection/bams/CEUTrio.HiSeq.WGS.jaffe.b37_decoy.NA12878.bam")
-    val spikeContributorBAM: File = new File("/humgen/gsa-hpprojects/NA12878Collection/bams/CEUTrio.HiSeq.WGS.b37_decoy.NA12891.bam")
 
     val INDIV1 = "NA12878"
     val INDIV2 = "NA12891"
 
     val libDir: File = new File(".")
 
-    @Input(fullName ="input_bams", shortName="I", doc = "Base bam files", required = false)
+    @Input(fullName ="input_bams", shortName="I", doc = "Base bam files")
     var bams: Seq[File] = Nil
+
+    @Input(fullName="spike_contributor_bam", shortName="spike_bam", doc="Bam file to spike variants in from")
+    var spikeContributorBAM: File = _
 
     @Input(doc = "Directory to locate output files in", shortName = "o", required = false)
     var output_dir: File = new File(libDir)
@@ -85,10 +86,10 @@ class GenerateBenchmark extends QScript with Logging {
 
         //fracture bams
         val fractureOutDir = new File(output_dir, "data_1g_wgs")
-        val (splitBams, fractureCmds) = FractureBams.makeFractureJobs(bam, referenceFile, libraries, PIECES, fractureOutDir)
-        fractureCmds.foreach(add(_))
+        val (splitBams, fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, PIECES, fractureOutDir)).unzip
+        fractureCmds.flatten.foreach(add(_))
 
-        qscript.bamNameToFileMap = splitBams.map((bam: File) => (bam.getName, bam)).toMap
+        qscript.bamNameToFileMap = splitBams.flatten.map((bam: File) => (bam.getName, bam)).toMap
 
         if( !no_spike ){
             //make vcfs
@@ -432,7 +433,7 @@ class GenerateBenchmark extends QScript with Logging {
                 val genotyper = new UnifiedGenotyper with GeneratorArguments {
                     this.scatterCount=4
                     this.input_file :+= qscript.spikeContributorBAM
-                    this.input_file :+= qscript.bam
+                    this.input_file.addAll( qscript.bams )
                     this.genotyping_mode = GenotypeLikelihoodsCalculationModel.GENOTYPING_MODE.GENOTYPE_GIVEN_ALLELES
                     this.alleles = new TaggedFile(indelFile, "VCF")
                     this.o = genotyperOutputVCF
