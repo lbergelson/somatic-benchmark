@@ -13,10 +13,11 @@ import org.broadinstitute.variant.variantcontext.VariantContext
 import java.io.{IOException, PrintWriter}
 import org.apache.commons.io.{FileUtils, IOUtils}
 import java.util
-import net.sf.samtools.SAMFileReader
+import net.sf.samtools.{SAMReadGroupRecord, SAMFileReader}
 
 import scala.collection.JavaConversions._
 import org.broadinstitute.sting.utils.exceptions.UserException
+import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
 
 class GenerateBenchmark extends QScript with Logging {
     qscript =>
@@ -55,14 +56,11 @@ class GenerateBenchmark extends QScript with Logging {
     val PIECES = 6
 
     //the last library in the list is considered the "normal"
-    lazy val libraries = getLibraries(bams)
+    lazy val libraries = ReadFromBamHeader.getLibraries(bams)
 
-    lazy val primaryIndividual = bams.map(getIndividualName).distinct match {
-        case names if names.length == 1 => names(0)
-        case names => throw new UserException.BadInput("Expected only 1 individual in input bams, but found %d. (%s)"
-            .format(names.length, names.mkString(",")))
-    }
-    lazy val spikeInIndividual = getIndividualName(spikeContributorBAM)
+    lazy val primaryIndividual = ReadFromBamHeader.getSingleSampleName(bams);
+
+    lazy val spikeInIndividual = ReadFromBamHeader.getSingleSampleName(Seq(spikeContributorBAM));
 
     val intervalFile = new File(libDir, "benchmark.interval_list")
 
@@ -259,7 +257,7 @@ class GenerateBenchmark extends QScript with Logging {
 
 
     class FalseNegativeSim(spikeSitesVCF: File, spikeInBam: File) {
-        val spikedOutputDir = new File(output_dir, "fn_data")
+        val spikedOutputDir = new File(qscript.output_dir, "fn_data")
 
         def makeFnSimCmds(alleleFractions: Traversable[Double], depths: Traversable[String])= {
             val pairs = for {
@@ -487,42 +485,60 @@ class GenerateBenchmark extends QScript with Logging {
 
     }
 
-    def getLibraries(bams: Seq[File]) = {
-        val libraries = bams.flatMap(getLibraryNames).distinct
-        libraries.size match{
-            case 0 | 1 => throw new UserException.BadInput("At least 2 libraries are required." )
-            case _ => libraries
+
+    /**
+     *  Read and validate data from a bam file header.
+     */
+    object ReadFromBamHeader{
+
+        def getLibraries(bams: Seq[File]): Seq[String] = {
+            val libraries = bams.flatMap(getLibraryNames).distinct
+            libraries.size match{
+                case 0 | 1 => throw new UserException.BadInput("At least 2 libraries are required." )
+                case _ => libraries
+            }
         }
-    }
 
 
-    def getLibraryNames(bam: File)= {
-        try{
-            val reader: SAMFileReader = new SAMFileReader(bam)
-            val libraries = reader.getFileHeader.getReadGroups.map(_.getLibrary).distinct
-            libraries
-        } catch {
-            case e: IOException => throw new UserException.CouldNotReadInputFile(bam, "Couldn't determine library names.", e)
+        private def getLibraryNames(bam: File)= {
+            valuesFromReadGroups(bam, record => record.getLibrary, "Couldn't determine Library names.")
         }
-    }
 
+        def getSingleSampleName(bams: Seq[File]): String = {
+            bams.map(getSampleName).distinct match {
+                case names if names.length == 1 => names(0)
+                case names => throw new UserException.BadInput("Expected only 1 individual in input bams, but found %d. (%s)"
+                    .format(names.length, names.mkString(",")))
+            }
+        }
 
-    def getIndividualName(bam: File)= {
-        try {
-            val reader: SAMFileReader = new SAMFileReader(bam)
-            val sample = reader.getFileHeader.getReadGroups.map(_.getSample).distinct
+        private def getSampleName(bam: File): String = {
+                val sample = valuesFromReadGroups(bam, record=> record.getSample, "Couldn't determine Individual name.")
+                sample.length match {
+                    case 0 => throw new UserException.BadInput("Could not determine any sample name in %s".format(bam.getAbsolutePath))
+                    case 1 => sample.head
+                    case num => throw new UserException.BadInput("Expecting only a single sample from %s, found %d".format(bam.getAbsolutePath, num))
+                }
 
-            sample.length match {
-                case 0 => throw new UserException.BadInput("Could not determine any sample name in %s".format(bam.getAbsolutePath))
-                case 1 => sample.head
-                case num => throw new UserException.BadInput("Expecting only a single sample from %s, found %d".format(bam.getAbsolutePath, num))
+        }
+
+        private def valuesFromReadGroups[A] (bam: File, getter: (SAMReadGroupRecord => A), messageOnFailure: String)={
+            var reader: SAMFileReader = null
+
+            try {
+                reader = new SAMFileReader(bam)
+                val values = reader.getFileHeader.getReadGroups.map(getter).distinct
+                reader.close()
+                values
+
+            } catch {
+                case e: IOException => throw new CouldNotReadInputFile(bam,messageOnFailure, e)
+            } finally {
+                IOUtils.closeQuietly(reader)
             }
 
-        } catch {
-            case e: IOException => throw new UserException.CouldNotReadInputFile(bam, "Couldn't determine sample name.", e)
         }
     }
-
 
 }
 
