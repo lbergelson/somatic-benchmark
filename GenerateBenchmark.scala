@@ -64,8 +64,8 @@ class GenerateBenchmark extends QScript with Logging {
 
     val intervalFile = new File(libDir, "benchmark.interval_list")
 
-    lazy val tumorFiles = allLibrarySplitFiles(tumorLibraries)
-    lazy val normalFiles = allLibrarySplitFiles(normalLibraries)
+    lazy val normalFiles = calculateFileNames(normalLibraries, is_test)
+    lazy val tumorFiles = calculateFileNames(tumorLibraries, is_test)
 
     def script() = {
 
@@ -91,7 +91,7 @@ class GenerateBenchmark extends QScript with Logging {
             val makeFnCommands = new FalseNegativeSim(spikeSitesVCF, spikeContributorBAM)
 
             val alleleFractions = Set(0.04, .1, .2, .4, .8)
-            val depths = if(is_test) List(tumorFiles.mkString("")) else allLengthsOfSlice(tumorFiles)
+            val depths = tumorFiles
             val (_,falseNegativeCmds) = makeFnCommands.makeFnSimCmds(alleleFractions, depths)
             falseNegativeCmds.foreach(add(_))
         }
@@ -223,34 +223,32 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     object MergeBams {
-        private val outFileNameTemplate = primaryIndividual+".%s.bam"
-        private lazy val BAMGROUPS: Seq[String] = if (is_test) {
-            List(tumorFiles.mkString(""), normalFiles.mkString(""))
-        } else {
-            val tumors: Seq[String] = allLengthsOfSlice(tumorFiles)
-            val normals: Seq[String] = allLengthsOfSlice(normalFiles)
-            tumors++normals
-        }
-
+        private val nameTemplate = primaryIndividual+".%s.bam"
 
         def makeMergeBamsJobs(dir: File) = {
+            def makeJobs(bamNames: Seq[String], fileNameFormatString: String): Seq[(File, MergeSamFiles)] ={
+                logger.debug("names="+ bamNames.mkString(",%n".format()))
 
-            logger.debug("BAMGROUPS="+ BAMGROUPS.mkString(",%n".format()))
-            BAMGROUPS.map {
-                name =>
-                    val mergedFile = new File(dir, outFileNameTemplate.format(name))
-                    val inputBams = getBams(name)
-                    val merge = new MergeSamFiles
+                bamNames.map {
+                    name =>
+                        val mergedFile = new File(dir, fileNameFormatString.format(name))
+                        val inputBams = getBams(name)
+                        val merge = new MergeSamFiles
 
-                    merge.memoryLimit = 2
-                    merge.input ++= inputBams
-                    merge.output = mergedFile
-                    merge.createIndex = true
-                    merge.USE_THREADING = true
-                    (mergedFile, merge)
-            }.unzip
+                        merge.memoryLimit = 2
+                        merge.input ++= inputBams
+                        merge.output = mergedFile
+                        merge.createIndex = true
+                        merge.USE_THREADING = true
+                        (mergedFile, merge)
+                }
+            }
+
+            val tumorJobs = makeJobs(qscript.tumorFiles, nameTemplate)
+            val normalJobs = makeJobs(qscript.normalFiles, nameTemplate)
+            (tumorJobs++normalJobs).unzip
+
         }
-
 
     }
 
@@ -292,26 +290,30 @@ class GenerateBenchmark extends QScript with Logging {
         }
     }
 
-    def tumorLibraries = {
-        libraries.dropRight(1)
+    lazy val tumorLibraries = libraries.dropRight(1)
+
+    lazy val normalLibraries = libraries.takeRight(1)
+
+    def calculateFileNames(libraries: Seq[String], isTest: Boolean) = {
+        def allLengthsOfSlice(seq: Seq[Char])={
+            for {
+                length <- 1 to seq.length
+            } yield seq.slice(0, length).mkString("")
+        }
+
+        def allLibrarySplitFiles(libraries: Seq[String]):Seq[Char] = {
+            for {
+                library  <- libraries
+                piece <- 1 to pieces
+            } yield calculateDigit(library, piece)
+        }
+
+
+        val files = allLibrarySplitFiles(libraries)
+        if(isTest) List(files.mkString("")) else allLengthsOfSlice(files)
+
     }
 
-    def normalLibraries = {
-        libraries.takeRight(1)
-    }
-
-    def allLengthsOfSlice(seq: Seq[Char])={
-        for {
-            length <- 1 to seq.length
-        } yield seq.slice(0, length).mkString("")
-    }
-
-    def allLibrarySplitFiles(libraries: Seq[String]):Seq[Char] = {
-        for {
-            library  <- libraries
-            piece <- 1 to pieces
-        } yield calculateDigit(library, piece)
-    }
 
     /**
      * Returns a list of bams that correspond to the encoded digitString.
