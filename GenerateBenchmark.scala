@@ -10,7 +10,7 @@ import org.broadinstitute.sting.queue.extensions.picard.{MergeSamFiles, SortSam}
 import net.sf.samtools.SAMFileHeader.SortOrder
 import org.broadinstitute.sting.gatk.walkers.genotyper.GenotypeLikelihoodsCalculationModel
 import org.broadinstitute.variant.variantcontext.VariantContext
-import java.io.{IOException, PrintWriter}
+import java.io.{File, IOException, PrintWriter}
 import org.apache.commons.io.{FileUtils, IOUtils}
 import java.util
 import net.sf.samtools.{SAMReadGroupRecord, SAMFileReader}
@@ -18,9 +18,20 @@ import net.sf.samtools.{SAMReadGroupRecord, SAMFileReader}
 import scala.collection.JavaConversions._
 import org.broadinstitute.sting.utils.exceptions.UserException
 import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
+import org.broadinstitute.sting.utils.io.FileExtension
 
 class GenerateBenchmark extends QScript with Logging {
     qscript =>
+
+    object BamType extends Enumeration {
+        type BamType = Value
+        val TUMOR, NORMAL, SPIKED = Value
+    }
+    import BamType._
+
+    class AnnotatedFile(file: File , val typeOfBam: BamType) extends File(file) with FileExtension {
+        def withPath(path: String) = new AnnotatedFile(path, typeOfBam)
+    }
 
     //TODO implement these as cmdline parameters instead of hard coding them
     val indelFile: File = new File("/humgen/1kg/DCC/ftp/technical/working/20130610_ceu_hc_trio/broad/CEU.wgs.HaplotypeCaller_bi.20130520.snps_indels.high_coverage_pcr_free.genotypes.vcf.gz")
@@ -80,7 +91,7 @@ class GenerateBenchmark extends QScript with Logging {
 
         qscript.bamNameToFileMap = splitBams.flatten.map((bam: File) => (bam.getName, bam)).toMap
 
-        if( !no_spike ){
+        val spikedBams: Option[Traversable[AnnotatedFile]] = if( !no_spike ){
             //make vcfs
             val vcfDir = new File(output_dir, "vcf_data")
             val vcfMakers = MakeVcfs.makeMakeVcfJobs(vcfDir)
@@ -92,9 +103,10 @@ class GenerateBenchmark extends QScript with Logging {
 
             val alleleFractions = if (is_test) Set(.8) else Set(0.04, .1, .2, .4, .8)
             val depths = tumorFiles
-            val (_,falseNegativeCmds) = makeFnCommands.makeFnSimCmds(alleleFractions, depths)
+            val (spikedBams,falseNegativeCmds) = makeFnCommands.makeFnSimCmds(alleleFractions, depths)
             falseNegativeCmds.foreach(add(_))
-        }
+            Some(spikedBams)
+        } else None
 
         //merge bams
         val (mergedBams, mergers) = MergeBams.makeMergeBamsJobs(fractureOutDir)
@@ -116,6 +128,7 @@ class GenerateBenchmark extends QScript with Logging {
         addAll(sounders)
         add(gatherDepths)
 
+        printBamInfoFile(new File("bam.types"),mergedBams ++ spikedBams.getOrElse(Nil))
 
     }
 
@@ -143,7 +156,6 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     object FractureBams {
-
 
         class SplitBam extends CommandLineFunction with BaseArguments {
             @Input(doc = "bam file to copy header from")
@@ -226,12 +238,12 @@ class GenerateBenchmark extends QScript with Logging {
         private val nameTemplate = primaryIndividual+".%s.bam"
 
         def makeMergeBamsJobs(dir: File) = {
-            def makeJobs(bamNames: Seq[String], fileNameFormatString: String): Seq[(File, MergeSamFiles)] ={
+            def makeJobs(bamNames: Seq[String], bamType: BamType): Seq[(AnnotatedFile, MergeSamFiles)] ={
                 logger.debug("names="+ bamNames.mkString(",%n".format()))
 
                 bamNames.map {
                     name =>
-                        val mergedFile = new File(dir, fileNameFormatString.format(name))
+                        val mergedFile = new AnnotatedFile( new File(dir, nameTemplate.format(name)), bamType)
                         val inputBams = getBams(name)
                         val merge = new MergeSamFiles
 
@@ -244,8 +256,8 @@ class GenerateBenchmark extends QScript with Logging {
                 }
             }
 
-            val tumorJobs = makeJobs(qscript.tumorFiles, nameTemplate)
-            val normalJobs = makeJobs(qscript.normalFiles, nameTemplate)
+            val tumorJobs = makeJobs(qscript.tumorFiles, TUMOR)
+            val normalJobs = makeJobs(qscript.normalFiles, NORMAL)
             (tumorJobs++normalJobs).unzip
 
         }
@@ -265,9 +277,9 @@ class GenerateBenchmark extends QScript with Logging {
             pairs.unzip
         }
 
-        private def makeMixedBam(alleleFraction: Double, depth: String): (File, CommandLineFunction) = {
+        private def makeMixedBam(alleleFraction: Double, depth: String): (AnnotatedFile, CommandLineFunction) = {
             val tumorBams = getBams(depth)
-            val outBam = new File(spikedOutputDir, deriveBamName(alleleFraction, depth))
+            val outBam = new AnnotatedFile(new File(spikedOutputDir, deriveBamName(alleleFraction, depth)), SPIKED)
             val outIntervals = swapExt(spikedOutputDir, outBam, "bam", "interval_list")
             val outVcf = swapExt(spikedOutputDir, outBam, "bam", "vcf")
 
@@ -542,6 +554,21 @@ class GenerateBenchmark extends QScript with Logging {
 
         }
     }
+
+    def printBamInfoFile(outputFile: File, bamFiles: Seq[AnnotatedFile])={
+        var writer: PrintWriter = null
+        try{
+            writer = new PrintWriter(outputFile)
+            bamFiles.foreach(file => writer.println( "%s\t%s".format(file.typeOfBam, file.getName)))
+        } catch {
+            case e: IOException => throw new UserException.CouldNotCreateOutputFile(outputFile, "Could not write bam types file.",e)
+        } finally {
+            IOUtils.closeQuietly(writer)
+        }
+    }
+
+
+
 
 }
 
