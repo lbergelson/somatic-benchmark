@@ -49,11 +49,11 @@ class GenerateBenchmark extends QScript with Logging {
     @Argument(fullName = "point_mutation_spike_in", shortName = "snps", doc = "Perform point mutation spike in", required = false)
     var snps: Boolean = false
 
-
+    @Argument(doc = "Number of pieces to split bams into, more pieces will take longer but produce more depths of coverage.", required = false)
+    var pieces: Int= 6
 
     var bamNameToFileMap: Map[String, File] = null
 
-    val PIECES = 6
 
     //the last library in the list is considered the "normal"
     lazy val libraries = ReadFromBamHeader.getLibraries(bams)
@@ -75,7 +75,7 @@ class GenerateBenchmark extends QScript with Logging {
 
         //fracture bams
         val fractureOutDir = new File(output_dir, "data_1g_wgs")
-        val (splitBams, fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, PIECES, fractureOutDir)).unzip
+        val (splitBams, fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, pieces, fractureOutDir)).unzip
         fractureCmds.flatten.foreach(add(_))
 
         qscript.bamNameToFileMap = splitBams.flatten.map((bam: File) => (bam.getName, bam)).toMap
@@ -309,7 +309,7 @@ class GenerateBenchmark extends QScript with Logging {
     def allLibrarySplitFiles(libraries: Seq[String]):Seq[Char] = {
         for {
             library  <- libraries
-            piece <- 1 to PIECES
+            piece <- 1 to pieces
         } yield calculateDigit(library, piece)
     }
 
@@ -336,7 +336,7 @@ class GenerateBenchmark extends QScript with Logging {
       */
     def calculateDigit(library: String, piece: Int): Char = {
         val digits = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        val index = libraries.indexOf(library) * PIECES + piece - 1
+        val index = libraries.indexOf(library) * pieces + piece - 1
         digits.charAt(index)
     }
 
@@ -344,12 +344,13 @@ class GenerateBenchmark extends QScript with Logging {
 
     def generateBamMap: Map[Char, String] = {
 
-        if (PIECES > 6 || libraries.size > 3) throw new UnsupportedOperationException("Currently only supported for PIECES <= 6 and LIBRARIES.size <= 3")
+        if (pieces * libraries.length <= 35) throw new UserException.BadArgumentValue("pieces", "Pieces * number of libraries must be <= 3 due to an implementation detail.  " +
+                        "(Pieces:%d, Libraries:%d, P*L=%d.)%n If this is an issue please contact the maintainer.".format(pieces,libraries.length,pieces*libraries.length))
 
         def mapLibraryPieces[T](f: (String, Int) => T): Seq[T] = {
             for {
                 library <- libraries
-                piece <- 1 to PIECES
+                piece <- 1 to pieces
             } yield f(library, piece)
         }
 
