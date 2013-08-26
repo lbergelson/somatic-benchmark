@@ -90,7 +90,7 @@ class GenerateBenchmark extends QScript with Logging {
             val spikeSitesVCF = new File(vcfDir, "%s_Ref_%s_Het.vcf".format(primaryIndividual, spikeInIndividual) )
             val makeFnCommands = new FalseNegativeSim(spikeSitesVCF, spikeContributorBAM)
 
-            val alleleFractions = Set(0.04, .1, .2, .4, .8)
+            val alleleFractions = if (is_test) Set(.8) else Set(0.04, .1, .2, .4, .8)
             val depths = tumorFiles
             val (_,falseNegativeCmds) = makeFnCommands.makeFnSimCmds(alleleFractions, depths)
             falseNegativeCmds.foreach(add(_))
