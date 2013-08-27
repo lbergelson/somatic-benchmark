@@ -128,7 +128,12 @@ class GenerateBenchmark extends QScript with Logging {
         addAll(sounders)
         add(gatherDepths)
 
-        printBamInfoFile(new File("bam.types"),mergedBams ++ spikedBams.getOrElse(Nil))
+
+        val recordBamTypes = new OutputBamTypeFile
+        recordBamTypes.bams = mergedBams ++ spikedBams.getOrElse(Nil)
+        recordBamTypes.bamTypeFile = new File("bams.bamtype")
+        add(recordBamTypes)
+
 
     }
 
@@ -555,17 +560,33 @@ class GenerateBenchmark extends QScript with Logging {
         }
     }
 
-    def printBamInfoFile(outputFile: File, bamFiles: Seq[AnnotatedFile])={
-        var writer: PrintWriter = null
-        try{
-            writer = new PrintWriter(outputFile)
-            bamFiles.foreach(file => writer.println( "%s\t%s".format(file.typeOfBam, file.getName)))
-        } catch {
-            case e: IOException => throw new UserException.CouldNotCreateOutputFile(outputFile, "Could not write bam types file.",e)
-        } finally {
-            IOUtils.closeQuietly(writer)
+    class OutputBamTypeFile extends InProcessFunction{
+
+        @Input
+        var bams: Seq[AnnotatedFile] = Nil
+
+        @Output
+        var bamTypeFile: File = _
+
+
+        def run() = {
+            printBamInfoFile(bamTypeFile, bams)
+        }
+
+        private def printBamInfoFile(outputFile: File, bamFiles: Seq[AnnotatedFile])={
+            var writer: PrintWriter = null
+            try{
+                writer = new PrintWriter(outputFile)
+                bamFiles.foreach(file => writer.println( "%s\t%s".format(file.typeOfBam, file.getName)))
+            } catch {
+                case e: IOException => throw new UserException.CouldNotCreateOutputFile(outputFile, "Could not write bam types file.",e)
+            } finally {
+                IOUtils.closeQuietly(writer)
+            }
         }
     }
+
+
 
 
 
