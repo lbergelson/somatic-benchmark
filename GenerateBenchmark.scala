@@ -358,7 +358,7 @@ class GenerateBenchmark extends QScript with Logging {
 
     def generateBamMap: Map[Char, String] = {
 
-        if (pieces * libraries.length <= 35) throw new UserException.BadArgumentValue("pieces", "Pieces * number of libraries must be <= 3 due to an implementation detail.  " +
+        if (pieces * libraries.length > 35) throw new UserException.BadArgumentValue("pieces", "Pieces * number of libraries must be <= 35 due to an implementation detail.  " +
                         "(Pieces:%d, Libraries:%d, P*L=%d.)%n If this is an issue please contact the maintainer.".format(pieces,libraries.length,pieces*libraries.length))
 
         def mapLibraryPieces[T](f: (String, Int) => T): Seq[T] = {
