@@ -17,6 +17,12 @@ class RunBenchmark extends QScript {
   @Argument(fullName="tool", shortName="t", doc="The name of a tool to run.  A matching script named run<Tool>.sh must be placed in the tool-scripts directory.")
   var tool_names: List[String]  = Nil
 
+  @Argument(fullName="no_false_positives", shortName="nofp", doc="Run false positive analysis.", required=false)
+  var no_false_positives: Boolean = false
+
+  @Argument(fullName="no_false_negatives", shortName="nofn", doc="Run false negative analysis.", required=false)
+  var no_false_negatives: Boolean = false
+
   val GERMLINE_MIX_DIR = new File("data_1g_wgs")
   val SPIKE_DIR = new File("fn_data")
 
@@ -34,10 +40,16 @@ class RunBenchmark extends QScript {
 
 
     val tools = getTools(tool_names)
-    val (outFPDirs, fpCmds) = getFalsePositiveCommands(tools).unzip
-    val (outSpikedDirs, spikeCmds ) = getSpikedCommands(tools).unzip
 
-    (fpCmds ++ spikeCmds).foreach(add(_))
+    if (!no_false_positives) {
+        val (outFPDirs, fpCmds) = getFalsePositiveCommands(tools).unzip
+        fpCmds.foreach(add(_))
+    }
+
+    if (!no_false_negatives) {
+        val (outSpikedDirs, spikeCmds ) = getSpikedCommands(tools).unzip
+        spikeCmds.foreach(add(_))
+    }
   }
 
   def getTools(names: List[String]):List[AbrvFile] = {
