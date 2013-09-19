@@ -40,6 +40,8 @@ class GenerateBenchmark extends QScript with Logging {
 
     val libDir: File = new File(".")
 
+    val intervalFile = new File(libDir, "benchmark.interval_list")
+
     @Input(fullName ="input_bams", shortName="I", doc = "Base bam files")
     var bams: Seq[File] = Nil
 
@@ -73,8 +75,6 @@ class GenerateBenchmark extends QScript with Logging {
     lazy val primaryIndividual = ReadFromBamHeader.getSingleSampleName(bams);
 
     lazy val spikeInIndividual = ReadFromBamHeader.getSingleSampleName(Seq(spikeContributorBAM));
-
-    val intervalFile = new File(libDir, "benchmark.interval_list")
 
     lazy val normalFiles = calculateFileNames(normalLibraries, is_test)
     lazy val tumorFiles = calculateFileNames(tumorLibraries, is_test)
