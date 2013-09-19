@@ -20,22 +20,38 @@ addDepths <- function(data, depths){
     return(merged)
 }
 
+
+fpRate <- function(fp){
+  fp/ 225.094260
+  
+}
+
+getRate <- function(fn){
+  (7954-fn)/7954
+}
+
+
 #Create the false positives graph
 merged <- addDepths(fp, depths)
-qplot(Tumor_Coverage, False_Positives, data=merged,color=Tool, facets=~Normal_Coverage, geom="line" ) + theme_bw()
-ggsave(file="graphs/plot.png", height=5, width = 10)
+merged$False_Positive_Rate <- sapply(merged$False_Positives, fpRate)
+qplot(Tumor_Coverage, False_Positive_Rate, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw()
+ggsave(file="graphs/fp_plot.png", height=5, width = 10)
 
 
 merged <- subset(merged, Normal_Coverage > 25)
-qplot(Tumor_Coverage, False_Positives, data=merged,color=Tool, facets=~Normal_Coverage, geom="line" ) + theme_bw()
-ggsave(file="graphs/high_coverage_plot.png", height=5, width = 10)
+qplot(Tumor_Coverage, False_Positive_Rate, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw()
+ggsave(file="graphs/fp_high_coverage_plot.png", height=5, width = 10)
+
+
 
 #Create the false negatives graph
 fn <- read.delim("diffResults.tsv")
 merged <- addDepths(fn, depths)
-qplot(Tumor_Coverage, FN, data=merged,color=Tool,  facets=~Fraction, geom="line" ) + theme_bw()
+max <- max(merged$FN)
+merged$FN_Fraction <- sapply(merged$FN, getRate )
+qplot(Tumor_Coverage, FN_Fraction, data=merged,color=Tool,  facets=~Fraction, geom="point" ) + theme_bw()
 ggsave(file="graphs/fn_plot.png", height=5, width = 10)
 
 merged <- subset(merged, Normal_Coverage > 25)
-qplot(Tumor_Coverage, FN, data=merged,color=Tool,  facets=~Fraction, geom="line" ) + theme_bw()
-ggsave(file="graphs/fn_high_coverage_plot.png", height=5, width = 10)
+qplot(Tumor_Coverage, FN_Fraction, data=merged,color=Tool,  facets=~Fraction, geom="point" ) + theme_bw()
+ggsave(file="fn_high_coverage_plot.png", height=5, width = 10)
