@@ -41,10 +41,10 @@ class GenerateBenchmark extends QScript with Logging {
     var no_spike: Boolean = false
 
     @Argument(fullName = "indel_spike_in", shortName="indels",doc = "Perform indel spike in", required = false)
-    var indels: Boolean = true;
+    var indels: Boolean = true
 
     @Argument(fullName = "point_mutation_spike_in", shortName = "snps", doc = "Perform point mutation spike in", required = false)
-    var snps: Boolean = false;
+    var snps: Boolean = false
 
     lazy val vcfDataDir = new File(output_dir, "vcf_data")
     lazy val spikeSitesVCF = new File(vcfDataDir, "%s_Ref_%s_Het.vcf".format(INDIV1, INDIV2) )
@@ -107,6 +107,7 @@ class GenerateBenchmark extends QScript with Logging {
 
         //compute depth information for generated bams
         val depthFiles = mergedBams.map(file => swapExt(file.getParent,file,"bam","depth"))
+
 
         val sounders = (mergedBams,depthFiles).zipped map( (bamFile,depthFile) => new DepthOfCoverage with GeneratorArguments {
             this.input_file:+= bamFile
@@ -406,6 +407,14 @@ class GenerateBenchmark extends QScript with Logging {
 
         }
 
+        def extractNumberOfBasesCovered(file: File): String = {
+            import scala.collection.JavaConversions._
+            val lines: util.List[String] = FileUtils.readLines(file)
+            val values = lines(1)
+            val basesWithOneOrMoreReads = values.split("\t")(2)
+            basesWithOneOrMoreReads
+        }
+
         def extractFilename(file:File):String = {
             val splitName = swapExt(file.getParentFile, file, ".depth.sample_summary","").getName.split('.')
             logger.debug("extractFilename: Extracting name from %s: splits as %s".format(file.getName, splitName))
@@ -413,12 +422,17 @@ class GenerateBenchmark extends QScript with Logging {
         }
 
         def run() {
-            val summaryFiles = depthFiles.map{ file => new File(file.getAbsolutePath+".sample_summary")}
+            //files with average depth information
+            val summaryFiles = depthFiles.map{ file => new File(file.getAbsolutePath + ".sample_summary")}
             val filenames = summaryFiles.map(extractFilename)
             val coverage = summaryFiles.map(extractAverageCoverage )
 
-            val header = "File\tCoverage"
-            val results = (filenames, coverage).zipped map( (name, coverage) => "%s\t%s".format(name,coverage) )
+            //files with number of bases covered information
+            val cumulativeCountFiles = depthFiles.map{ file => new File(file.getAbsoluteFile + ".sample_cumulative_coverage_counts")}
+            val bases = cumulativeCountFiles.map(extractNumberOfBasesCovered)
+
+            val header = "File\tCoverage\tCovered_Bases"
+            val results = (filenames, coverage, bases).zipped map( (name, coverage, bases) => "%s\t%s\t%s".format(name,coverage, bases) )
 
             printHeaderAndContents(coverageFile, header, results)
 
