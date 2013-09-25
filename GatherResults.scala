@@ -29,8 +29,8 @@ class GatherResults extends QScript with Logging{
         logger.debug("Fp results:"+ fpResults)
         logger.debug("Fn results:"+ fnResults)
 
-        analyzePositives(fpResults)
-        analyzeNegatives(fnResults)
+        if(fpResults.nonEmpty) analyzePositives(fpResults) else logger.warn("No false positive result files detected.")
+        if(fnResults.nonEmpty) analyzeNegatives(fnResults) else logger.warn("No false negative result files detected.")
 
         val makeGraphs = new RCommandLineFunction
         makeGraphs.script = "make_graphs.r"
