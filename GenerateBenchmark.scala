@@ -72,9 +72,9 @@ class GenerateBenchmark extends QScript with Logging {
     //the last library in the list is considered the "normal"
     lazy val libraries = ReadFromBamHeader.getLibraries(bams)
 
-    lazy val primaryIndividual = ReadFromBamHeader.getSingleSampleName(bams);
+    lazy val primaryIndividual = ReadFromBamHeader.getSingleSampleName(bams)
 
-    lazy val spikeInIndividual = ReadFromBamHeader.getSingleSampleName(Seq(spikeContributorBAM));
+    lazy val spikeInIndividual = ReadFromBamHeader.getSingleSampleName(Seq(spikeContributorBAM))
 
     lazy val normalFiles = calculateFileNames(normalLibraries, is_test)
     lazy val tumorFiles = calculateFileNames(tumorLibraries, is_test)
@@ -93,6 +93,8 @@ class GenerateBenchmark extends QScript with Logging {
     def script() = {
         logger.info("Libraries are: "+  libraries.toString())
         logger.info("Individuals are %s and %s".format(primaryIndividual, spikeInIndividual))
+
+        List(intervalFile, referenceFile, indelFile, snpFile, spikeContributorBAM).foreach(ensureFileExists)
 
         //fracture bams
         val fractureOutDir = new File(output_dir, "data_1g_wgs")
@@ -145,6 +147,12 @@ class GenerateBenchmark extends QScript with Logging {
 
     }
 
+
+    def ensureFileExists(file: File) {
+        if (!file.exists() ) {
+            throw new CouldNotReadInputFile(file)
+        }
+    }
 
 
     trait BaseArguments extends CommandLineFunction with RetryMemoryLimit{
