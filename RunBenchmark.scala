@@ -23,9 +23,12 @@ class RunBenchmark extends QScript {
   @Argument(fullName="no_false_negatives", shortName="nofn", doc="Run false negative analysis.", required=false)
   var no_false_negatives: Boolean = false
 
-  val GERMLINE_MIX_DIR = new File("data_1g_wgs")
-  val SPIKE_DIR = new File("fn_data")
 
+  @Argument(fullName="list_tools", shortName="list", doc="List the available tool scripts and exit", required=false)
+  var list_tools: Boolean = false
+
+  val GERMLINE_NAME_TEMPLATE = "NA12878.somatic.simulation.merged.%s.bam"
+  val GERMLINE_MIX_DIR = new File(LIB_DIR, "data_1g_wgs")
 
   val bamTypesFile : File = new File("bams.bamtype")
   val referenceFile : File = new File("/home/unix/louisb/cga_home/reference/human_g1k_v37_decoy.fasta")
@@ -34,10 +37,15 @@ class RunBenchmark extends QScript {
   lazy val spikedNormal = normals.sortBy(_.length).last
 
 
+  val LIB_DIR = new File(".")
+  val SPIKE_DIR = new File(LIB_DIR, "fn_data")
+
+  val TOOL_DIR = new File(LIB_DIR, "tool-scripts")
 
 
   def script() {
 
+    if(list_tools) listToolsAndExit()
 
     val tools = getTools(tool_names)
 
@@ -52,10 +60,21 @@ class RunBenchmark extends QScript {
     }
   }
 
+  def listToolsAndExit() {
+    val files = TOOL_DIR.listFiles()
+    val tools = files.filter(file => file.getName.startsWith("run") && file.getName.endsWith(".sh"))
+    val names = tools.map(_.getName.drop(3).dropRight(3))
+    logger.info("======= Tools ========")
+    names.foreach( file => logger.info( "=  %s".format(file) ) )
+    logger.info("======================")
+
+    System.exit(0);
+  }
+
   def getTools(names: List[String]):List[AbrvFile] = {
-      val toolDir = "tool-scripts"
+
       names.map{name =>
-          val toolFile = new File(toolDir, "run%s.sh".format(name))
+          val toolFile = new File(TOOL_DIR, "run%s.sh".format(name))
           if( ! toolFile.exists() ) throw new CouldNotReadInputFile(toolFile, " file does not exist.")
           new AbrvFile(toolFile, name)
       }
