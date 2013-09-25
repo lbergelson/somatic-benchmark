@@ -20,12 +20,6 @@ addDepths <- function(data, depths){
     return(merged)
 }
 
-
-fpRate <- function(fp){
-  fp/ 225.094260
-  
-}
-
 getRate <- function(fn){
   (7954-fn)/7954
 }
@@ -33,7 +27,7 @@ getRate <- function(fn){
 
 #Create the false positives graph
 merged <- addDepths(fp, depths)
-merged$False_Positive_Rate <- sapply(merged$False_Positives, fpRate)
+merged$False_Positive_Rate <- merged$False_Positives / merged$Bases_Covered
 qplot(Tumor_Coverage, False_Positive_Rate, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw()
 ggsave(file="graphs/fp_plot.png", height=5, width = 10)
 
