@@ -163,18 +163,12 @@ class RunBenchmark extends QScript {
         val source = Source.fromFile(typesFile)
 
         val lines = source.getLines()
-        val splits = lines.map(_.split('\t')).map(splitLine => (splitLine(0), splitLine(1))).toList
+        val splits = lines.map(_.split('\t')).map(splitLine => (splitLine(0), splitLine(1), splitLine(2))).toList
 
-        def newGermlineMixFile(name : String)= {
-            new AbrvFile(new File(GERMLINE_MIX_DIR, name), name.split('.')(1) )
-        }
-        def newSpikedFile(name : String) = {
-            new AbrvFile(new File(SPIKE_DIR, name), name.split('_')(1))
-        }
 
-        val tumor = splits.collect  { case ("TUMOR", name) => newGermlineMixFile(name)  }
-        val normal = splits.collect { case ("NORMAL", name) => newGermlineMixFile(name) }
-        val spiked = splits.collect { case ("SPIKED", name) => newSpikedFile(name) }
+        val tumor = splits.collect  { case ("TUMOR", file, name) => new AbrvFile(file,name)  }
+        val normal = splits.collect { case ("NORMAL", file, name) => new AbrvFile(file,name)  }
+        val spiked = splits.collect { case ("SPIKED", file, name) => new AbrvFile(file,name)  }
 
         logger.debug("Normal: "+normal)
         logger.debug("Tumor: "+tumor)
