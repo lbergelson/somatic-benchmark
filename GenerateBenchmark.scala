@@ -255,7 +255,7 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     object MergeBams {
-        private val nameTemplate = primaryIndividual+".%s.bam"
+        private val nameTemplate = ".%s.bam"
 
         def makeMergeBamsJobs(dir: File) = {
             def makeJobs(bamNames: Seq[String], bamType: BamType): Seq[(AnnotatedFile, MergeSamFiles)] ={
@@ -334,7 +334,7 @@ class GenerateBenchmark extends QScript with Logging {
         }
 
         private def deriveBamName(alleleFraction: Double, depth: String): String = {
-            val bamNameTemplate = primaryIndividual+"_%s_"+spikeInIndividual+"_%s_spikein.bam"
+            val bamNameTemplate = "%s_%s_spikein.bam"
             bamNameTemplate.format(depth, alleleFraction)
         }
     }

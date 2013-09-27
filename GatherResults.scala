@@ -1,10 +1,10 @@
 package org.broadinstitute.cga.benchmark.queue
 
 import org.broadinstitute.sting.queue.QScript
-import java.io.{IOException, PrintWriter, BufferedWriter, FileWriter}
+import java.io.{IOException, PrintWriter}
 import org.broadinstitute.sting.queue.util.Logging
 import scala.io.Source
-import org.apache.commons.io.{LineIterator, IOUtils, FileUtils}
+import org.apache.commons.io.IOUtils
 
 /**
 Traverse the output directories of RunBenchmark and gather results.
@@ -137,11 +137,11 @@ class GatherResults extends QScript with Logging{
         val file = if (inputFile.isDirectory) inputFile else inputFile.getParentFile
 
         private def tumorFileFromName(name: String, fraction: Double)={
-            new File("fn_data","NA12878_%s_NA12891_%s_spikein.bam".format(name, fraction))
+            new File("fn_data","%s_%s_spikein.bam".format(name, fraction))
         }
 
         private def normalFileFromName(name: String)={
-            new File("data_1g_wgs", "NA12878.somatic.simulation.merged.%s.bam".format(name))
+            new File("data_1g_wgs", "%s.bam".format(name))
         }
 
         def hasSpikeIn: Boolean = splits.length == 4

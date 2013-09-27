@@ -27,7 +27,7 @@ class RunBenchmark extends QScript {
   @Argument(fullName="list_tools", shortName="list", doc="List the available tool scripts and exit", required=false)
   var list_tools: Boolean = false
 
-  val GERMLINE_NAME_TEMPLATE = "NA12878.somatic.simulation.merged.%s.bam"
+  val GERMLINE_NAME_TEMPLATE = "%s.bam"
   val GERMLINE_MIX_DIR = new File(LIB_DIR, "data_1g_wgs")
 
   val bamTypesFile : File = new File("bams.bamtype")
