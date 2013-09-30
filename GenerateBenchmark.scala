@@ -33,16 +33,21 @@ class GenerateBenchmark extends QScript with Logging {
         def withPath(path: String) = new AnnotatedFile(path, typeOfBam)
     }
 
-    //TODO implement these as cmdline parameters instead of hard coding them
-    val indelFile: File = new File("/humgen/1kg/DCC/ftp/technical/working/20130610_ceu_hc_trio/broad/CEU.wgs.HaplotypeCaller_bi.20130520.snps_indels.high_coverage_pcr_free.genotypes.vcf.gz")
-    val snpFile: File = new File("/humgen/gsa-hpprojects/GATK/bundle/current/b37/dbsnp_137.b37.vcf")
-    val referenceFile: File = new File("/humgen/1kg/reference/human_g1k_v37_decoy.fasta")
-
     val libDir: File = new File(".")
 
-    val intervalFile = new File(libDir, "benchmark.interval_list")
+    @Input(fullName="interval_file", doc="File listing intervals to restrict analysis to.", required = false)
+    val intervalFile: File = new File(libDir, "benchmark.interval_list")
 
-    @Input(fullName ="input_bams", shortName="I", doc = "Base bam files")
+    @Input(fullName="goldIndels", doc="Variant file with known good indel locations", required=false)
+    val indelFile: File = new File("/humgen/1kg/DCC/ftp/technical/working/20130610_ceu_hc_trio/broad/CEU.wgs.HaplotypeCaller_bi.20130520.snps_indels.high_coverage_pcr_free.genotypes.vcf.gz")
+
+    @Input(fullName = "goldSnps", doc="Variant file with known good snp locations", required=false)
+    var snpFile: File = new File("/humgen/gsa-hpprojects/GATK/bundle/current/b37/dbsnp_137.b37.vcf")
+
+    @Input(fullName="reference", shortName="R", doc="Reference fasta.", required= false)
+    var referenceFile: File = new File("/humgen/1kg/reference/human_g1k_v37_decoy.fasta")
+
+    @Input(fullName="input_bams", shortName="I", doc = "Base bam files")
     var bams: Seq[File] = Nil
 
     @Input(fullName="spike_contributor_bam", shortName="spike_bam", doc="Bam file to spike variants in from")
