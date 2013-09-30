@@ -1,12 +1,11 @@
 package org.broadinstitute.cga.benchmark.queue
 
 import org.broadinstitute.sting.queue.QScript
-import org.broadinstitute.sting.utils.io.{IOUtils, FileExtension}
+import org.broadinstitute.sting.utils.io.FileExtension
 import org.broadinstitute.sting.queue.function.RetryMemoryLimit
 import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
-import java.io.{IOException, FileReader}
+import java.io.IOException
 import scala.io.Source
-import org.apache.commons.io.IOUtils
 
 class RunBenchmark extends QScript {
   qscript =>
@@ -27,6 +26,8 @@ class RunBenchmark extends QScript {
   @Argument(fullName="list_tools", shortName="list", doc="List the available tool scripts and exit", required=false)
   var list_tools: Boolean = false
 
+  val LIB_DIR = new File(".")
+
   val GERMLINE_NAME_TEMPLATE = "%s.bam"
   val GERMLINE_MIX_DIR = new File(LIB_DIR, "data_1g_wgs")
 
@@ -37,7 +38,6 @@ class RunBenchmark extends QScript {
   lazy val spikedNormal = normals.sortBy(_.length).last
 
 
-  val LIB_DIR = new File(".")
   val SPIKE_DIR = new File(LIB_DIR, "fn_data")
 
   val TOOL_DIR = new File(LIB_DIR, "tool-scripts")
@@ -50,12 +50,12 @@ class RunBenchmark extends QScript {
     val tools = getTools(tool_names)
 
     if (!no_false_positives) {
-        val (outFPDirs, fpCmds) = getFalsePositiveCommands(tools).unzip
+        val (_, fpCmds) = getFalsePositiveCommands(tools).unzip
         fpCmds.foreach(add(_))
     }
 
     if (!no_false_negatives) {
-        val (outSpikedDirs, spikeCmds ) = getSpikedCommands(tools).unzip
+        val (_, spikeCmds ) = getSpikedCommands(tools).unzip
         spikeCmds.foreach(add(_))
     }
   }
@@ -64,11 +64,12 @@ class RunBenchmark extends QScript {
     val files = TOOL_DIR.listFiles()
     val tools = files.filter(file => file.getName.startsWith("run") && file.getName.endsWith(".sh"))
     val names = tools.map(_.getName.drop(3).dropRight(3))
+
     logger.info("======= Tools ========")
     names.foreach( file => logger.info( "=  %s".format(file) ) )
     logger.info("======================")
 
-    System.exit(0);
+    System.exit(0)
   }
 
   def getTools(names: List[String]):List[AbrvFile] = {
