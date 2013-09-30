@@ -22,26 +22,47 @@ class GatherResults extends QScript with Logging{
     @Input(doc = "False negative test root directories.", required = false)
     var false_negative: Seq[File] = List(new File("spiked") )
 
+    @Argument(fullName="no_false_positives", shortName="nofp", doc="Run false positive analysis.", required=false)
+    var no_false_positives: Boolean = false
+
+    @Argument(fullName="no_false_negatives", shortName="nofn", doc="Run false negative analysis.", required=false)
+    var no_false_negatives: Boolean = false
+
 
     def script() {
-        val fpResults  = searchForOutputFiles( false_positive )
-        val fnResults  = searchForOutputFiles( false_negative )
-        logger.debug("Fp results:"+ fpResults)
-        logger.debug("Fn results:"+ fnResults)
+        def runAnalysis(variantType: String) = {
 
-        if(fpResults.nonEmpty) analyzePositives(fpResults) else logger.warn("No false positive result files detected.")
-        if(fnResults.nonEmpty) analyzeNegatives(fnResults) else logger.warn("No false negative result files detected.")
+            val resultsFileName = "final.%s.vcf".format(variantType)
 
-        val makeGraphs = new RCommandLineFunction
-        makeGraphs.script = "make_graphs.r"
-        add(makeGraphs)
+            val fpResults = searchForOutputFiles(false_positive, resultsFileName)
+            val fnResults = searchForOutputFiles(false_negative, resultsFileName)
+            logger.debug("Fp results:" + fpResults)
+            logger.debug("Fn results:" + fnResults)
+
+            if (fpResults.isEmpty) logger.info("No false Positive result file detected")
+            if (fnResults.isEmpty) logger.info("No false Negative result file detected")
+
+            if(fpResults.nonEmpty && !no_false_positives) analyzePositives(fpResults, variantType)
+            if(fnResults.nonEmpty && !no_false_negatives) analyzeNegatives(fnResults, variantType)
+
+            val makeGraphs = new RscriptCommandLineFunction
+            makeGraphs.script = "make_graphs.r"
+            makeGraphs.args = List("graphs-%s", "falsePositiveCounts-%s.tsv", "diffResults-%s.tsv").map( _.format( variantType ))
+
+            add(makeGraphs)
+        }
+
+        runAnalysis("snps")
+        runAnalysis("indels")
 
     }
 
-    def analyzePositives(files: Seq[File]) = {
+
+
+    def analyzePositives(files: Seq[File], variantType: String) = {
         val counter = new countFalsePositives
         counter.input = files
-        counter.output = new File("falsePositiveCounts.tsv")
+        counter.output = new File("falsePositiveCounts-%s.tsv".format(variantType))
         add(counter)
     }
 
@@ -83,14 +104,14 @@ class GatherResults extends QScript with Logging{
         }
     }
 
-    def analyzeNegatives(files: Seq[File]) = {
+    def analyzeNegatives(files: Seq[File], variantType: String) = {
         val (jobs, diffOuts) = files.map{ file =>
             val metaData = new DirectoryMetaData(file)
             val vcfdiff = new VcfDiff
-            vcfdiff.outputPrefix = file.getParent + "/vcfout"
+            vcfdiff.outputPrefix = "%s/vcfout-%s".format(file.getParent, variantType)
             vcfdiff.comparisonVcf = swapExt(metaData.tumor.getParentFile, metaData.tumor, "bam","vcf")
             vcfdiff.vcf = file
-            val diffOut = new File( file.getParent, "vcfout.diff.sites_in_files")
+            val diffOut = new File( file.getParent, "vcfout-%s.diff.sites_in_files".format(variantType))
             vcfdiff.differenceFile = diffOut
             (vcfdiff, diffOut)
         }.unzip
@@ -99,7 +120,7 @@ class GatherResults extends QScript with Logging{
 
         val stats = new ComputeIndelStats{
             this.sitesFiles = diffOuts.toList
-            this.results = new File("diffResults.tsv")
+            this.results = new File("diffResults-%s.tsv".format(variantType))
         }
 
         add(stats)
@@ -191,21 +212,21 @@ class GatherResults extends QScript with Logging{
                                   required("--out", outputPrefix)
     }
 
-    def searchForOutputFiles(roots: Seq[File]) = {
-       val finalVcfs = roots.flatMap( searchRootDirectory )
+    def searchForOutputFiles(roots: Seq[File], resultsFileName: String) = {
+       val finalVcfs = roots.flatMap( searchRootDirectory(_,resultsFileName) )
        finalVcfs
     }
-    
-    def searchRootDirectory(dir: File) = {
-        val resultDirs = dir.listFiles()
-        val results = resultDirs.flatMap(checkForResultFile)
+
+    def searchRootDirectory(dir: File, resultsFileName: String) = {
+        val resultDirs: Option[Seq[File]] = Option(dir.listFiles())
+        val results = resultDirs.getOrElse(Nil).flatMap(checkForResultFile(_,resultsFileName))
         results
     }
 
-    def checkForResultFile(dir: File):Option[File] = {
+    def checkForResultFile(dir: File, resultsFileName: String = "final.indels.vcf"):Option[File] = {
         val files = dir.listFiles()
         if (files != null) {
-            files.find( _.getName == "final.indels.vcf" )
+            files.find( _.getName == resultsFileName )
         } else {
             None
         }
@@ -251,17 +272,14 @@ class GatherResults extends QScript with Logging{
         }
     }
 
-    class RCommandLineFunction extends CommandLineFunction {
+    class RscriptCommandLineFunction extends CommandLineFunction {
         @Input(doc="R script to execute")
         var script: File = _
 
-        @Output(doc="Output file, defaults to <scriptfile>.Rout if not given", required=false)
-        var rout:Option[File] = None
+        @Argument(doc="List of commandline arguments")
+        var  args: List[String] = Nil
 
-        @Argument(doc="run in vanilla mode", required = false)
-        var vanilla: Boolean = false
-
-        def commandLine: String = required("R", "CMD", "BATCH") + conditional(vanilla,"-vanilla") +required(script) + optional(rout)
+        def commandLine: String = required("Rscript")  +required(script)+ repeat(args)
     }
 
 }
