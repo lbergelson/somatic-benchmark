@@ -39,11 +39,13 @@ class GatherResults extends QScript with Logging{
             logger.debug("Fp results:" + fpResults)
             logger.debug("Fn results:" + fnResults)
 
-            if (fpResults.isEmpty) logger.info("No false Positive result file detected")
-            if (fnResults.isEmpty) logger.info("No false Negative result file detected")
+            if (fpResults.isEmpty) logger.info(s"No false Positive $variantType result file detected")
+            if (fnResults.isEmpty) logger.info(s"No false Negative $variantType result file detected")
 
             if(fpResults.nonEmpty && !no_false_positives) analyzePositives(fpResults, variantType)
             if(fnResults.nonEmpty && !no_false_negatives) analyzeNegatives(fnResults, variantType)
+
+
 
             val makeGraphs = new RscriptCommandLineFunction
             makeGraphs.script = "make_graphs.r"
