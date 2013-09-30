@@ -66,11 +66,14 @@ class GenerateBenchmark extends QScript with Logging {
     @Argument(doc = "Number of pieces to split bams into, more pieces will take longer but produce more depths of coverage.", required = false)
     var pieces: Int= 6
 
+    @Argument(doc = "Spike directly into the given bams without any mixing steps.",required = false)
+    var spike_in_only: Boolean = false
+
     var bamNameToFileMap: Map[String, File] = null
 
 
     //the last library in the list is considered the "normal"
-    lazy val libraries = ReadFromBamHeader.getLibraries(bams)
+    lazy val libraries = if(!spike_in_only) ReadFromBamHeader.getLibraries(bams) else Nil
 
     lazy val primaryIndividual = ReadFromBamHeader.getSingleSampleName(bams)
 
@@ -90,17 +93,33 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     def script() = {
-        logger.info("Libraries are: "+  libraries.toString())
-        logger.info("Individuals are %s and %s".format(primaryIndividual, spikeInIndividual))
 
         List(intervalFile, referenceFile, indelFile, snpFile, spikeContributorBAM).foreach(ensureFileExists)
 
-        //fracture bams
-        val fractureOutDir = new File(output_dir, "data_1g_wgs")
-        val (splitBams, fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, pieces, fractureOutDir)).unzip
-        fractureCmds.flatten.foreach(add(_))
+        logger.info("Individuals are %s and %s".format(primaryIndividual, spikeInIndividual))
 
-        qscript.bamNameToFileMap = splitBams.flatten.map((bam: File) => (bam.getName, bam)).toMap
+        val mergedBams = if(!spike_in_only) {
+            logger.info("Libraries are: "+  libraries.toString())
+
+
+
+            //fracture bams
+            val fractureOutDir = new File(output_dir, "data_1g_wgs")
+            val (splitBams, fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, pieces, fractureOutDir)).unzip
+            fractureCmds.flatten.foreach(add(_))
+
+            qscript.bamNameToFileMap = splitBams.flatten.map((bam: File) => (bam.getName, bam)).toMap
+
+            //merge bams
+            val (mergedBams, mergers) = MergeBams.makeMergeBamsJobs(fractureOutDir)
+            addAll(mergers)
+            mergedBams
+
+        } else {
+            bams.map(new AnnotatedFile(_, NORMAL))
+        }
+
+
 
         val spikedBams: Option[Traversable[AnnotatedFile]] = if( !no_spike ){
             //make vcfs
@@ -119,9 +138,7 @@ class GenerateBenchmark extends QScript with Logging {
             Some(spikedBams)
         } else None
 
-        //merge bams
-        val (mergedBams, mergers) = MergeBams.makeMergeBamsJobs(fractureOutDir)
-        addAll(mergers)
+
 
         //compute depth information for generated bams
         val depthFiles = mergedBams.map(file => swapExt(file.getParent,file,"bam","depth"))
