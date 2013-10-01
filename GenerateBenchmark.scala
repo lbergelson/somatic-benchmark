@@ -329,7 +329,7 @@ class GenerateBenchmark extends QScript with Logging {
 
         private def makeMixedBam(spikeFraction: Double, depth: File): (AnnotatedFile, CommandLineFunction, CommandLineFunction) = {
             val tumorBam = depth
-            val outBam = new AnnotatedFile(new File(spikedOutputDir, deriveBamName(spikeFraction, depth)), SPIKED)
+            val outBam = new AnnotatedFile(new File(spikedOutputDir, deriveBamName(spikeFraction, depth.getName)), SPIKED)
 
             val outIntervals = swapExt(spikedOutputDir, outBam, "bam", "interval_list")
             val outVcf = swapExt(spikedOutputDir, outBam, "bam", "vcf")
