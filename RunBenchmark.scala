@@ -26,12 +26,15 @@ class RunBenchmark extends QScript {
   @Argument(fullName="list_tools", shortName="list", doc="List the available tool scripts and exit", required=false)
   var list_tools: Boolean = false
 
+  @Argument(fullName="bamtypes", doc="The bamtypes file.", required=false)
+  var bamTypesFile : File = new File("bams.bamtype")
+
   val LIB_DIR = new File(".")
 
   val GERMLINE_NAME_TEMPLATE = "%s.bam"
   val GERMLINE_MIX_DIR = new File(LIB_DIR, "data_1g_wgs")
 
-  val bamTypesFile : File = new File("bams.bamtype")
+
   val referenceFile : File = new File("/home/unix/louisb/cga_home/reference/human_g1k_v37_decoy.fasta")
 
   lazy val (normals,tumors,spikedTumors) = readBamTypesFile(bamTypesFile)
