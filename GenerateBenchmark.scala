@@ -317,7 +317,7 @@ class GenerateBenchmark extends QScript with Logging {
     class FalseNegativeSim(spikeSitesVCF: File, spikeInBam: File) {
         val spikedOutputDir = new File(qscript.output_dir, "fn_data")
 
-        def makeFnSimCmds(alleleFractions: Traversable[Double], depths: Traversable[String])= {
+        def makeFnSimCmds(alleleFractions: Traversable[Double], depths: Traversable[File])= {
             val results = for {
                 fraction <- alleleFractions
                 depth <- depths
@@ -327,8 +327,8 @@ class GenerateBenchmark extends QScript with Logging {
 
         }
 
-        private def makeMixedBam(spikeFraction: Double, depth: String): (AnnotatedFile, CommandLineFunction, CommandLineFunction) = {
-            val tumorBams = BamFileNameCalculator.getBams(depth)
+        private def makeMixedBam(spikeFraction: Double, depth: File): (AnnotatedFile, CommandLineFunction, CommandLineFunction) = {
+            val tumorBam = depth
             val outBam = new AnnotatedFile(new File(spikedOutputDir, deriveBamName(spikeFraction, depth)), SPIKED)
 
             val outIntervals = swapExt(spikedOutputDir, outBam, "bam", "interval_list")
@@ -338,7 +338,7 @@ class GenerateBenchmark extends QScript with Logging {
             spiker.javaMemoryLimit = 4
             spiker.simulation_fraction = spikeFraction
             spiker.out = outBam
-            spiker.input_file ++= tumorBams
+            spiker.input_file :+= tumorBam
             spiker.spiked_intervals_out = outIntervals
             spiker.intervals = List(spikeSitesVCF)
             spiker.input_file :+= new TaggedFile(spikeContributorBAM, "spike")
