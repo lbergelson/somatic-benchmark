@@ -141,7 +141,7 @@ class GenerateBenchmark extends QScript with Logging {
             val makeFnCommands = new FalseNegativeSim(spikeSitesVCF, spikeContributorBAM)
 
             val alleleFractions = if (is_test) Set(.8) else Set(0.04, .1, .2, .4, .8)
-            val depths = BamFileNameCalculator.tumorFiles
+            val depths = mergedBams.filter( _.typeOfBam == TUMOR)
             val (spikedBams,falseNegativeCmds) = makeFnCommands.makeFnSimCmds(alleleFractions, depths)
             falseNegativeCmds.foreach(add(_))
             Some(spikedBams)
