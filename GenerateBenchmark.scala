@@ -80,8 +80,8 @@ class GenerateBenchmark extends QScript with Logging {
     var bamNameToFileMap: Map[String, File] = null
 
 
-    //the last library in the list is considered the "normal"
-    lazy val libraries = if(!spike_in_only) ReadFromBamHeader.getLibraries(bams) else Nil
+
+
 
     lazy val primaryIndividual = ReadFromBamHeader.getSingleSampleName(bams)
 
@@ -107,19 +107,19 @@ class GenerateBenchmark extends QScript with Logging {
         logger.info("Individuals are %s and %s".format(primaryIndividual, spikeInIndividual))
 
         val mergedBams = if(!spike_in_only) {
+
+            //the last library in the list is considered the "normal"
+            val libraries: Seq[String] = ReadFromBamHeader.getLibraries(bams)
             logger.info("Libraries are: "+  libraries.toString())
-
-
 
             //fracture bams
             val fractureOutDir = new File(output_dir, "data_1g_wgs")
-            val (splitBams, fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, pieces, fractureOutDir)).unzip
+            val (splitBams: Traversable[File], fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, pieces, fractureOutDir)).unzip
             fractureCmds.flatten.foreach(add(_))
 
-            qscript.bamNameToFileMap = splitBams.flatten.map((bam: File) => (bam.getName, bam)).toMap
 
             //merge bams
-            val (mergedBams, mergers) = MergeBams.makeMergeBamsJobs(fractureOutDir)
+            val (mergedBams, mergers) = MergeBams.makeMergeBamsJobs(fractureOutDir, splitBams, libraries, pieces)
             addAll(mergers)
             mergedBams
 
@@ -221,7 +221,7 @@ class GenerateBenchmark extends QScript with Logging {
                 repeat(outFiles)
         }
 
-        def makeFractureJobs(bam: File, reference: File, libraries: Traversable[String], pieces: Int, outDir: File) = {
+        def makeFractureJobs(bam: File, reference: File, libraries: Traversable[String], pieces: Int, outDir: File): (Traversable[File], Traversable[CommandLineFunction]) = {
 
             def makeSingleFractureJob(libraryName: String): (List[File], List[CommandLineFunction]) = {
 
@@ -283,16 +283,103 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
     object MergeBams {
+        private class BamFileNameCalculator(val is_test:Boolean, val splitBams: Traversable[File],
+                                            val libraries: Seq[String], pieces: Int) {
+
+            val bamNameToFileMap = splitBams.map((bam: File) => (bam.getName, bam)).toMap
+
+            val tumorLibraries = libraries.dropRight(1)
+            val normalLibraries = libraries.takeRight(1)
+
+            val normalFiles = calculateFileNames(normalLibraries, is_test)
+            val tumorFiles = calculateFileNames(tumorLibraries, is_test)
+
+
+            /**
+             * Returns a list of bams that correspond to the encoded digitString.
+             * Each digit in the string maps to specific bam.  Each library is split into multiple files and there is a unique digit
+             * assigned to each file.
+             * @param digitString
+             * @return
+             */
+            def getBams(digitString: String): List[File] = {
+                val bamDigitToNameMap = generateBamMap
+                try {
+                    digitString.map(digit => bamNameToFileMap(bamDigitToNameMap(digit))).toList
+                } catch {
+                    case e: Exception =>
+                        println(bamNameToFileMap)
+                        println(bamDigitToNameMap)
+                        throw e
+                }
+            }
+
+
+
+            private def calculateFileNames(libraries: Seq[String], isTest: Boolean) = {
+                def allLengthsOfSlice(seq: Seq[Char])={
+                    for {
+                        length <- 1 to seq.length
+                    } yield seq.slice(0, length).mkString("")
+                }
+
+                def allLibrarySplitFiles(libraries: Seq[String]):Seq[Char] = {
+                    for {
+                        library  <- libraries
+                        piece <- 1 to pieces
+                    } yield calculateDigit(library, piece)
+                }
+
+
+                val files = allLibrarySplitFiles(libraries)
+                if(isTest) List(files.mkString("")) else allLengthsOfSlice(files)
+
+            }
+
+            /** Convert the combination of library / string into a unique character
+              */
+            private def calculateDigit(library: String, piece: Int): Char = {
+                val digits = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                val index = libraries.indexOf(library) * pieces + piece - 1
+                digits.charAt(index)
+            }
+
+            private def generateBamMap: Map[Char, String] = {
+
+                if (pieces * libraries.length > 35) throw new UserException.BadArgumentValue("pieces", "Pieces * number of libraries must be <= 35 due to an implementation detail.  " +
+                    "(Pieces:%d, Libraries:%d, P*L=%d.)%n If this is an issue please contact the maintainer.".format(pieces,libraries.length,pieces*libraries.length))
+
+                def mapLibraryPieces[T](f: (String, Int) => T): Seq[T] = {
+                    for {
+                        library <- libraries
+                        piece <- 1 to pieces
+                    } yield f(library, piece)
+                }
+
+                val mappings = mapLibraryPieces((library, piece) => (calculateDigit(library, piece), getSplitFileName(library, piece, "bam")))
+
+                mappings.toMap
+
+            }
+        }
+
         private val nameTemplate = ".%s.bam"
 
-        def makeMergeBamsJobs(dir: File) = {
+        def makeMergeBamsJobs(dir: File, splitBams: Traversable[File], libraries: Seq[String], pieces: Int) = {
+
+            val nameCalculator = new BamFileNameCalculator(is_test, splitBams, libraries, pieces )
+
+            val tumorJobs = makeJobs(nameCalculator.tumorFiles, TUMOR)
+            val normalJobs = makeJobs(nameCalculator.normalFiles, NORMAL)
+            (tumorJobs++normalJobs).unzip
+
             def makeJobs(bamNames: Seq[String], bamType: BamType): Seq[(AnnotatedFile, MergeSamFiles)] ={
                 logger.debug("names="+ bamNames.mkString(",%n".format()))
 
                 bamNames.map {
                     name =>
                         val mergedFile = new AnnotatedFile( new File(dir, nameTemplate.format(name)), bamType)
-                        val inputBams = BamFileNameCalculator.getBams(name)
+                        val inputBams = nameCalculator.getBams(name)
                         val merge = new MergeSamFiles
 
                         merge.memoryLimit = 2
@@ -303,10 +390,6 @@ class GenerateBenchmark extends QScript with Logging {
                         (mergedFile, merge)
                 }
             }
-
-            val tumorJobs = makeJobs(BamFileNameCalculator.tumorFiles, TUMOR)
-            val normalJobs = makeJobs(BamFileNameCalculator.normalFiles, NORMAL)
-            (tumorJobs++normalJobs).unzip
 
         }
 
@@ -367,82 +450,7 @@ class GenerateBenchmark extends QScript with Logging {
         }
     }
 
-    object BamFileNameCalculator{
 
-        lazy val tumorLibraries = libraries.dropRight(1)
-        lazy val normalLibraries = libraries.takeRight(1)
-
-        lazy val normalFiles = calculateFileNames(normalLibraries, is_test)
-        lazy val tumorFiles = calculateFileNames(tumorLibraries, is_test)
-
-        private def calculateFileNames(libraries: Seq[String], isTest: Boolean) = {
-            def allLengthsOfSlice(seq: Seq[Char])={
-                for {
-                    length <- 1 to seq.length
-                } yield seq.slice(0, length).mkString("")
-            }
-
-            def allLibrarySplitFiles(libraries: Seq[String]):Seq[Char] = {
-                for {
-                    library  <- libraries
-                    piece <- 1 to pieces
-                } yield calculateDigit(library, piece)
-            }
-
-
-            val files = allLibrarySplitFiles(libraries)
-            if(isTest) List(files.mkString("")) else allLengthsOfSlice(files)
-
-        }
-
-
-        /**
-         * Returns a list of bams that correspond to the encoded digitString.
-         * Each digit in the string maps to specific bam.  Each library is split into multiple files and there is a unique digit
-         * assigned to each file.
-         * @param digitString
-         * @return
-         */
-        def getBams(digitString: String): List[File] = {
-            val bamDigitToNameMap = generateBamMap
-            try {
-                digitString.map(digit => bamNameToFileMap(bamDigitToNameMap(digit))).toList
-            } catch {
-                case e: Exception =>
-                    println(bamNameToFileMap)
-                    println(bamDigitToNameMap)
-                    throw e
-            }
-        }
-
-        /** Convert the combination of library / string into a unique character
-          */
-        private def calculateDigit(library: String, piece: Int): Char = {
-            val digits = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            val index = libraries.indexOf(library) * pieces + piece - 1
-            digits.charAt(index)
-        }
-
-
-
-        private def generateBamMap: Map[Char, String] = {
-
-            if (pieces * libraries.length > 35) throw new UserException.BadArgumentValue("pieces", "Pieces * number of libraries must be <= 35 due to an implementation detail.  " +
-                            "(Pieces:%d, Libraries:%d, P*L=%d.)%n If this is an issue please contact the maintainer.".format(pieces,libraries.length,pieces*libraries.length))
-
-            def mapLibraryPieces[T](f: (String, Int) => T): Seq[T] = {
-                for {
-                    library <- libraries
-                    piece <- 1 to pieces
-                } yield f(library, piece)
-            }
-
-            val mappings = mapLibraryPieces((library, piece) => (calculateDigit(library, piece), getSplitFileName(library, piece, "bam")))
-
-            mappings.toMap
-
-        }
-    }
 
     def getSplitFileName(library: String, piece: Int, extension: String) = {
         val fileNameTemplate = primaryIndividual + ".split.%s.%03d.%s"
