@@ -124,7 +124,8 @@ class GenerateBenchmark extends QScript with Logging {
             mergedBams
 
         } else {
-            bams.map(new AnnotatedFile(_, NORMAL))
+            //this is wierd had hackey
+            Seq(new AnnotatedFile(bams.head,NORMAL)) ++ bams.tail.map(new AnnotatedFile(_, TUMOR))
         }
 
 
