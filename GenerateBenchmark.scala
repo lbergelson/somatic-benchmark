@@ -74,6 +74,9 @@ class GenerateBenchmark extends QScript with Logging {
     @Argument(doc = "Spike directly into the given bams without any mixing steps.",required = false)
     var spike_in_only: Boolean = false
 
+    @Argument(doc = "Stops the computation of depth of coverage information", required = false)
+    var no_depths: Boolean = false
+
     var bamNameToFileMap: Map[String, File] = null
 
 
@@ -145,21 +148,23 @@ class GenerateBenchmark extends QScript with Logging {
 
 
 
-        //compute depth information for generated bams
-        val depthFiles = mergedBams.map(file => swapExt(file.getParent,file,"bam","depth"))
+        if(!no_depths){
+            //compute depth information for generated bams
+            val depthFiles = mergedBams.map(file => swapExt(file.getParent,file,"bam","depth"))
 
-        val sounders = (mergedBams,depthFiles).zipped map( (bamFile,depthFile) => new DepthOfCoverage with GeneratorArguments {
-            this.input_file:+= bamFile
-            this.out = depthFile
-            this.omitDepthOutputAtEachBase = true
-        })
+            val sounders = (mergedBams,depthFiles).zipped map( (bamFile,depthFile) => new DepthOfCoverage with GeneratorArguments {
+                this.input_file:+= bamFile
+                this.out = depthFile
+                this.omitDepthOutputAtEachBase = true
+            })
 
-        val gatherDepths = new GatherDepths
-        gatherDepths.depthFiles = depthFiles
-        gatherDepths.coverageFile=new File("collectedCoverage.tsv")
+            val gatherDepths = new GatherDepths
+            gatherDepths.depthFiles = depthFiles
+            gatherDepths.coverageFile=new File("collectedCoverage.tsv")
 
-        addAll(sounders)
-        add(gatherDepths)
+            addAll(sounders)
+            add(gatherDepths)
+        }
 
         val recordBamTypes = new OutputBamTypeFile
         recordBamTypes.bams = mergedBams ++ spikedBams.getOrElse(Nil)
