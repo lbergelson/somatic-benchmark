@@ -128,6 +128,7 @@ class RunBenchmark extends QScript {
         for{
             normal <- normals
             tumor <- tumors
+            if normal != tumor
         } yield (normal, tumor)
     }
 
