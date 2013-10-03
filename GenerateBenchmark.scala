@@ -18,20 +18,12 @@ import net.sf.samtools.{SAMReadGroupRecord, SAMFileReader}
 import scala.collection.JavaConversions._
 import org.broadinstitute.sting.utils.exceptions.UserException
 import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
-import org.broadinstitute.sting.utils.io.FileExtension
+
+import org.broadinstitute.cga.benchmark.queue.BamType._
 
 class GenerateBenchmark extends QScript with Logging {
     qscript =>
 
-    object BamType extends Enumeration {
-        type BamType = Value
-        val TUMOR, NORMAL, SPIKED = Value
-    }
-    import BamType._
-
-    class AnnotatedFile(file: File , val typeOfBam: BamType) extends java.io.File(file) with FileExtension {
-        def withPath(path: String) = new AnnotatedFile(path, typeOfBam)
-    }
 
     val libDir: File = new File(".")
 
@@ -125,12 +117,12 @@ class GenerateBenchmark extends QScript with Logging {
 
         } else {
             val reverseBams = bams.reverse
-            reverseBams.tail.map(new AnnotatedFile(_, TUMOR)) :+ new AnnotatedFile(reverseBams.head, NORMAL)
+            reverseBams.tail.map(file => new AnnotatedBamFile(file, TUMOR, file.getName)) :+ new AnnotatedBamFile(reverseBams.head, NORMAL, reverseBams.head.getName)
         }
 
 
 
-        val spikedBams: Option[Traversable[AnnotatedFile]] = if( !no_spike ){
+        val spikedBams: Option[Traversable[AnnotatedBamFile]] = if( !no_spike ){
             //make vcfs
             val vcfDir = new File(output_dir, "vcf_data")
             val vcfMakers = MakeVcfs.makeMakeVcfJobs(vcfDir)
@@ -373,12 +365,12 @@ class GenerateBenchmark extends QScript with Logging {
             val normalJobs = makeJobs(nameCalculator.normalFiles, NORMAL)
             (tumorJobs++normalJobs).unzip
 
-            def makeJobs(bamNames: Seq[String], bamType: BamType): Seq[(AnnotatedFile, MergeSamFiles)] ={
+            def makeJobs(bamNames: Seq[String], bamType: BamType): Seq[(AnnotatedBamFile, MergeSamFiles)] ={
                 logger.debug("names="+ bamNames.mkString(",%n".format()))
 
                 bamNames.map {
                     name =>
-                        val mergedFile = new AnnotatedFile( new File(dir, nameTemplate.format(name)), bamType)
+                        val mergedFile = new AnnotatedBamFile( new File(dir, nameTemplate.format(name)), bamType, name)
                         val inputBams = nameCalculator.getBams(name)
                         val merge = new MergeSamFiles
 
@@ -410,9 +402,9 @@ class GenerateBenchmark extends QScript with Logging {
 
         }
 
-        private def makeMixedBam(spikeFraction: Double, depth: File): (AnnotatedFile, CommandLineFunction, CommandLineFunction) = {
+        private def makeMixedBam(spikeFraction: Double, depth: File): (AnnotatedBamFile, CommandLineFunction, CommandLineFunction) = {
             val tumorBam = depth
-            val outBam = new AnnotatedFile(new File(spikedOutputDir, deriveBamName(spikeFraction, depth.getName)), SPIKED)
+            val outBam = new AnnotatedBamFile(new File(spikedOutputDir, deriveBamName(spikeFraction, depth.getName)), SPIKED, deriveBamName(spikeFraction, depth.getName))
 
             val outIntervals = swapExt(spikedOutputDir, outBam, "bam", "interval_list")
             val outVcf = swapExt(spikedOutputDir, outBam, "bam", "vcf")
@@ -627,36 +619,6 @@ class GenerateBenchmark extends QScript with Logging {
 
         }
     }
-
-    class OutputBamTypeFile extends InProcessFunction{
-
-        @Input
-        var bams: Seq[AnnotatedFile] = Nil
-
-        @Output
-        var bamTypeFile: File = _
-
-
-        def run() = {
-            printBamInfoFile(bamTypeFile, bams)
-        }
-
-        private def printBamInfoFile(outputFile: File, bamFiles: Seq[AnnotatedFile])={
-            var writer: PrintWriter = null
-            try{
-                writer = new PrintWriter(outputFile)
-                bamFiles.foreach(file => writer.println( "%s\t%s".format(file.typeOfBam, file.getName)))
-            } catch {
-                case e: IOException => throw new UserException.CouldNotCreateOutputFile(outputFile, "Could not write bam types file.",e)
-            } finally {
-                IOUtils.closeQuietly(writer)
-            }
-        }
-    }
-
-
-
-
 
 
 }

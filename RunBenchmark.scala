@@ -1,11 +1,8 @@
 package org.broadinstitute.cga.benchmark.queue
 
 import org.broadinstitute.sting.queue.QScript
-import org.broadinstitute.sting.utils.io.FileExtension
 import org.broadinstitute.sting.queue.function.RetryMemoryLimit
 import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
-import java.io.IOException
-import scala.io.Source
 
 class RunBenchmark extends QScript {
   qscript =>
@@ -37,7 +34,7 @@ class RunBenchmark extends QScript {
 
   val referenceFile : File = new File("/home/unix/louisb/cga_home/reference/human_g1k_v37_decoy.fasta")
 
-  lazy val (normals,tumors,spikedTumors) = readBamTypesFile(bamTypesFile)
+  lazy val (normals,tumors,spikedTumors) = AnnotatedBamFile.readBamTypesFile(bamTypesFile)
   lazy val spikedNormal = normals.sortBy(_.length).last
 
 
@@ -75,18 +72,16 @@ class RunBenchmark extends QScript {
     System.exit(0)
   }
 
-  def getTools(names: List[String]):List[AbrvFile] = {
+  def getTools(names: List[String]):List[AbbreviatedFile] = {
 
       names.map{name =>
           val toolFile = new File(TOOL_DIR, "run%s.sh".format(name))
           if( ! toolFile.exists() ) throw new CouldNotReadInputFile(toolFile, " file does not exist.")
-          new AbrvFile(toolFile, name)
+          new AbbreviatedFile(toolFile, name)
       }
   }
 
-  class AbrvFile(file: File , val abrv: String) extends File(file) with FileExtension {
-    def withPath(path: String) = new AbrvFile(path, abrv)
-  }
+
 
 
          //invokes <tool> with parameters <normal><tumor><reference><outputDir>
@@ -126,8 +121,8 @@ class RunBenchmark extends QScript {
     }
   }
 
-  def getFalsePositiveCommands(tools: Traversable[AbrvFile]) = {
-    def getPureFalsePositivePairs(normals: Traversable[AbrvFile], tumors: Traversable[AbrvFile]) = {
+  def getFalsePositiveCommands(tools: Traversable[AbbreviatedFile]) = {
+    def getPureFalsePositivePairs(normals: Traversable[AbbreviatedFile], tumors: Traversable[AbbreviatedFile]) = {
         for{
             normal <- normals
             tumor <- tumors
@@ -139,15 +134,15 @@ class RunBenchmark extends QScript {
     generateCmds(tools, pureGermline, "germline_mix")
  }
 
- def getSpikedCommands(tools:List[AbrvFile]) = {
+ def getSpikedCommands(tools:List[AbbreviatedFile]) = {
     val spiked = spikedTumors.map(tumor => (spikedNormal, tumor))
     generateCmds(tools, spiked, "spiked")
  }
 
 
-  def generateCmds(toolsToTest: Traversable[AbrvFile], normalTumorPairs: Traversable[(AbrvFile, AbrvFile)], outputDir: File):Traversable[(File, CommandLineFunction)] = {
-    def generateCmd(tool: AbrvFile, normal:AbrvFile, tumor: AbrvFile, outputDir: File): (File, CommandLineFunction) ={
-        val individualOutputDir = new File(outputDir, "%s_N%S_T%S".format(tool.abrv, normal.abrv, tumor.abrv))
+  def generateCmds(toolsToTest: Traversable[AbbreviatedFile], normalTumorPairs: Traversable[(AbbreviatedFile, AbbreviatedFile)], outputDir: File):Traversable[(File, CommandLineFunction)] = {
+    def generateCmd(tool: AbbreviatedFile, normal:AbbreviatedFile, tumor: AbbreviatedFile, outputDir: File): (File, CommandLineFunction) ={
+        val individualOutputDir = new File(outputDir, "%s_N%S_T%S".format(tool.abbreviation, normal.abbreviation, tumor.abbreviation))
         (individualOutputDir, ToolInvocation(tool=tool, normal=normal, tumor=tumor, reference=referenceFile, outputDir=individualOutputDir) )
     }
 
@@ -157,28 +152,6 @@ class RunBenchmark extends QScript {
     } yield generateCmd(tool, normal, tumor, outputDir)
   }
 
-  def readBamTypesFile(typesFile: File) = {
-    try{
-
-        val source = Source.fromFile(typesFile)
-
-        val lines = source.getLines()
-        val splits = lines.map(_.split('\t')).map(splitLine => (splitLine(0), splitLine(1), splitLine(2))).toList
-
-
-        val tumor = splits.collect  { case ("TUMOR", file, name) => new AbrvFile(file,name)  }
-        val normal = splits.collect { case ("NORMAL", file, name) => new AbrvFile(file,name)  }
-        val spiked = splits.collect { case ("SPIKED", file, name) => new AbrvFile(file,name)  }
-
-        logger.debug("Normal: "+normal)
-        logger.debug("Tumor: "+tumor)
-        logger.debug("Spiked: " + spiked)
-
-        (normal, tumor, spiked)
-    } catch {
-        case e: IOException => throw new CouldNotReadInputFile(typesFile, "Could not read bam types file", e)
-    }
-  }
 
 }
 
