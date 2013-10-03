@@ -239,7 +239,9 @@ class GatherResults extends QScript with Logging{
     def checkForResultFile(dir: File, resultsFileName: String = "final.indels.vcf"):Option[File] = {
         val files = dir.listFiles()
         if (files != null) {
-            files.find( _.getName == resultsFileName )
+            files.find{ file =>
+                (file.getAbsolutePath.contains("Strelka") && file.getAbsoluteFile.contains("final.indels.vcf")) ||
+                (file.getAbsolutePath.contains("Indelocator") && file.getAbsoluteFile.contains("sample.panel_filtered.indels.vcf"))}
         } else {
             None
         }
