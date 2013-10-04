@@ -1,10 +1,11 @@
 package org.broadinstitute.cga.benchmark.queue
 
 import org.broadinstitute.sting.queue.QScript
-import java.io.{IOException, PrintWriter}
+import java.io.{FileNotFoundException, IOException, PrintWriter}
 import org.broadinstitute.sting.queue.util.Logging
 import scala.io.Source
 import org.apache.commons.io.IOUtils
+import org.broadinstitute.sting.queue.library.cga.benchmark.AnnotatedBamFile
 
 /**
 Traverse the output directories of RunBenchmark and gather results.
@@ -28,6 +29,7 @@ class GatherResults extends QScript with Logging{
     @Argument(fullName="no_false_negatives", shortName="nofn", doc="Run false negative analysis.", required=false)
     var no_false_negatives: Boolean = false
 
+    val bams: Map[String, AnnotatedBamFile] = AnnotatedBamFile.readBamTypesFile("bams.bamtypes").map(bam => bam.abbreviation -> bam).toMap
 
     def script() {
         def runAnalysis(variantType: String) = {
@@ -136,30 +138,24 @@ class GatherResults extends QScript with Logging{
     class DirectoryMetaData( inputFile: File) {
         val file = if (inputFile.isDirectory) inputFile else inputFile.getParentFile
 
-        private def tumorFileFromName(name: String, fraction: Double)={
-            new File("fn_data","%s_%s_spikein.bam".format(name, fraction))
-        }
-
-        private def normalFileFromName(name: String)={
-            new File("data_1g_wgs", "%s.bam".format(name))
-        }
-
         def hasSpikeIn: Boolean = splits.length == 4
 
-        //expecting filename in the format of Indelocator_NDEFGHI_T1234_0.4
-        // or Indelocator_NDEFGHI_T1234
+        //expecting filename in the format of
+        // Indelocator_NDEFGHI_T1234_0.4
+        // Indelocator_NDEFGHI_T1234
+
         private val splits = file.getName.split("_")
         val tool: String = splits(0)
 
         val normalName: String = splits(1).drop(1)
-        val normal: File = normalFileFromName(normalName)
+        val normal: File = bams(normalName)
 
         val tumorName :String = splits(2).drop(1)
         val (tumor, fraction) = if (hasSpikeIn) {
             val fraction = splits(3).toDouble
-            ( tumorFileFromName(tumorName, fraction), Some(fraction) )
+            (bams(tumorName+"_"+splits(3)), Some(fraction))
         } else {
-            (normalFileFromName(tumorName), None)
+            (bams(tumorName), None)
         }
 
     }

@@ -1,4 +1,4 @@
-package org.broadinstitute.cga.benchmark.queue
+package org.broadinstitute.sting.queue.library.cga.benchmark
 
 import org.broadinstitute.sting.utils.io.FileExtension
 import java.io.{IOException, PrintWriter, File}
@@ -28,30 +28,46 @@ class AnnotatedBamFile(file: File , val typeOfBam: BamType, abbreviation: String
 }
 
 object AnnotatedBamFile extends Logging{
-    import BamType._
-    def readBamTypesFile(typesFile: File) = {
-        try{
-            val source = Source.fromFile(typesFile)
+    class AnnotatedBamException extends Exception
 
-            val lines = source.getLines()
-            val splits = lines.map(_.split('\t')).map(splitLine => (splitLine(0), splitLine(1), splitLine(2))).toList
-
-
-            val tumor = splits.collect  { case ("TUMOR", file, name) => new AnnotatedBamFile(file, TUMOR,name)  }
-            val normal = splits.collect { case ("NORMAL", file, name) => new AnnotatedBamFile(file, NORMAL,name)  }
-            val spiked = splits.collect { case ("SPIKED", file, name) => new AnnotatedBamFile(file, SPIKED,name)  }
-
-            logger.debug("Normal: "+normal)
-            logger.debug("Tumor: "+tumor)
-            logger.debug("Spiked: " + spiked)
-
-            (normal, tumor, spiked)
+    def apply(str: String) = {
+        val splitStr = str.split('\t')
+        try {
+            new AnnotatedBamFile(splitStr(0), BamType.withName(splitStr(1)), splitStr(2) )
         } catch {
-            case e: IOException => throw new CouldNotReadInputFile(typesFile, "Could not read bam types file", e)
+            case e: Exception => throw new AnnotatedBamException()
         }
     }
 
+    def readBamTypesFile(typesFile: File) = {
+        try{
+            val source = Source.fromFile(typesFile)
+            val lines = source.getLines()
+            val annotated = lines.map(AnnotatedBamFile(_)).toSeq
+
+            warnIfAbbreviationsAreNotUnique(annotated)
+
+            annotated
+        } catch {
+            case e: IOException => throw new CouldNotReadInputFile(typesFile, "Could not read bam types file due to IO problem:", e)
+            case e: AnnotatedBamException => throw new CouldNotReadInputFile(typesFile, "Couldn't load the bam types file because of a problem creating an AnnotatedBamFile", e)
+        }
+    }
+
+    def splitByType(files: Seq[AnnotatedBamFile]) = {
+        val tumor = files.filter( _.typeOfBam == TUMOR )
+        val normal = files.filter( _.typeOfBam == NORMAL )
+        val spiked = files.filter(_.typeOfBam == SPIKED)
+
+        logger.debug("Normal: "+normal)
+        logger.debug("Tumor: "+tumor)
+        logger.debug("Spiked: " + spiked)
+
+        (normal, tumor, spiked)
+    }
+
     def printBamInfoFile(outputFile: File, bamFiles: Seq[AnnotatedBamFile])={
+        warnIfAbbreviationsAreNotUnique(bamFiles)
         var writer: PrintWriter = null
         try{
             writer = new PrintWriter(outputFile)
@@ -60,6 +76,16 @@ object AnnotatedBamFile extends Logging{
             case e: IOException => throw new UserException.CouldNotCreateOutputFile(outputFile, "Could not write bam types file.",e)
         } finally {
             IOUtils.closeQuietly(writer)
+        }
+    }
+
+    private def namesAreUnique(bamFiles: Seq[AnnotatedBamFile]) = {
+        bamFiles.map(_.abbreviation).distinct.length != bamFiles.length
+    }
+
+    private def warnIfAbbreviationsAreNotUnique(bamFiles: Seq[AnnotatedBamFile]) = {
+        if(!namesAreUnique(bamFiles)) {
+            logger.warn("Bam file abbreviations are not unique!  This will probably cause problems!")
         }
     }
 

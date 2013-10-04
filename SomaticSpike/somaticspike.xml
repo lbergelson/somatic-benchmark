@@ -11,7 +11,7 @@
       <package name="org.broad.tribble.*" />
       <package name="org.broadinstitute.cga.tools.gatk.filters" />
       <package name="org.broadinstitute.cga.tools.gatk.walkers.varianteval.**" />
-      <package name="org.broadinstitute.cga.benchmark.queue.**" />
+      <package name="org.broadinstitute.sting.queue.library.cga.benchmark.**" />
       <package name="org.broadinstitute.sting.commandline" />
       <package name="org.broadinstitute.sting.gatk.filters" />
       <package name="org.apache.commons.logging.impl" />

@@ -1,4 +1,4 @@
-package org.broadinstitute.cga.benchmark.queue
+package org.broadinstitute.sting.queue.library.cga.benchmark
 
 /**
  * Enumeration with different classes of bam files.

@@ -3,6 +3,7 @@ package org.broadinstitute.cga.benchmark.queue
 import org.broadinstitute.sting.queue.QScript
 import org.broadinstitute.sting.queue.function.RetryMemoryLimit
 import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
+import org.broadinstitute.sting.queue.library.cga.benchmark.{AbbreviatedFile, AnnotatedBamFile }
 
 class RunBenchmark extends QScript {
   qscript =>
@@ -34,7 +35,7 @@ class RunBenchmark extends QScript {
 
   val referenceFile : File = new File("/home/unix/louisb/cga_home/reference/human_g1k_v37_decoy.fasta")
 
-  lazy val (normals,tumors,spikedTumors) = AnnotatedBamFile.readBamTypesFile(bamTypesFile)
+  lazy val (normals,tumors,spikedTumors) = AnnotatedBamFile.splitByType(AnnotatedBamFile.readBamTypesFile(bamTypesFile))
   lazy val spikedNormal = normals.sortBy(_.length).last
 
 

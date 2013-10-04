@@ -19,7 +19,8 @@ import scala.collection.JavaConversions._
 import org.broadinstitute.sting.utils.exceptions.UserException
 import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
 
-import org.broadinstitute.cga.benchmark.queue.BamType._
+import org.broadinstitute.sting.queue.library.cga.benchmark.BamType._
+import org.broadinstitute.sting.queue.library.cga.benchmark.{AnnotatedBamFile, OutputBamTypeFile}
 
 class GenerateBenchmark extends QScript with Logging {
     qscript =>
