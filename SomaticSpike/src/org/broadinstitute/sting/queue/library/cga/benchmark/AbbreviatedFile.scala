@@ -16,6 +16,14 @@ import org.broadinstitute.sting.queue.util.Logging
 
 
 
+/**
+ * Enumeration with different classes of bam files.
+ */
+object BamType extends Enumeration {
+    type BamType = Value
+    val TUMOR, NORMAL, SPIKED = Value
+}
+
 import BamType._
 
 class AbbreviatedFile( file: File , val abbreviation: String) extends File(file) with FileExtension {
@@ -28,14 +36,14 @@ class AnnotatedBamFile(file: File , val typeOfBam: BamType, abbreviation: String
 }
 
 object AnnotatedBamFile extends Logging{
-    class AnnotatedBamException extends Exception
+    class AnnotatedBamException(e: Exception) extends Exception(e)
 
     def apply(str: String) = {
         val splitStr = str.split('\t')
         try {
-            new AnnotatedBamFile(splitStr(0), BamType.withName(splitStr(1)), splitStr(2) )
+            new AnnotatedBamFile(splitStr(1), BamType.withName(splitStr(0)), splitStr(2) )
         } catch {
-            case e: Exception => throw new AnnotatedBamException()
+            case e: Exception => throw new AnnotatedBamException(e)
         }
     }
 

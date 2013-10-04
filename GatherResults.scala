@@ -29,9 +29,7 @@ class GatherResults extends QScript with Logging{
     @Argument(fullName="no_false_negatives", shortName="nofn", doc="Run false negative analysis.", required=false)
     var no_false_negatives: Boolean = false
 
-    val bams: Map[String, AnnotatedBamFile] = AnnotatedBamFile.readBamTypesFile("bams.bamtypes").map(bam => bam.abbreviation -> bam).toMap
-
-    def script() {
+     def script() {
         def runAnalysis(variantType: String) = {
 
             val resultsFileName = "final.%s.vcf".format(variantType)
@@ -148,16 +146,19 @@ class GatherResults extends QScript with Logging{
         val tool: String = splits(0)
 
         val normalName: String = splits(1).drop(1)
-        val normal: File = bams(normalName)
+        val normal: File = DirectoryMetaData.bams(normalName)
 
         val tumorName :String = splits(2).drop(1)
         val (tumor, fraction) = if (hasSpikeIn) {
             val fraction = splits(3).toDouble
-            (bams(tumorName+"_"+splits(3)), Some(fraction))
+            (DirectoryMetaData.bams(tumorName+"_"+splits(3)), Some(fraction))
         } else {
-            (bams(tumorName), None)
+            (DirectoryMetaData.bams(tumorName), None)
         }
+    }
 
+    object DirectoryMetaData{
+        lazy val bams: Map[String, AnnotatedBamFile] = AnnotatedBamFile.readBamTypesFile("bams.bamtype").map(bam => bam.abbreviation -> bam).toMap
     }
 
 
