@@ -64,7 +64,7 @@
         <echo message="build.dir = ${build.dir}" />
         <echo message="dist.dir = ${dist.dir}" />
         <echo message="gatk.classpath = ${gatk.classpath}" />
-	<echo message="Tool=${executable} version=${build.version} " />        
+	<echo message="Tool=Benchmark version=${build.version} " />
     </target>
     
     <target name="compile" depends="init,insertversion">
@@ -73,11 +73,12 @@
 
     <target name="insertversion" depends="generate.build.version">
 	<echo message="${build.dir}/CGAText.properties" />
-	<concat destfile="${build.dir}/CGAText.properties">version=${build.version}</concat>
+	<concat destfile="${build.dir}/CGAText.properties">BenchmarkVersion=${build.version}</concat>
     </target>
 
     <target name="dist" depends="init,compile,insertversion">
         <jar jarfile="${dist.dir}/CancerGenomeAnalysisTools.jar">
+            <fileset dir="${build.dir}" includes="org/broadinstitute/cga/benchmark/queue/**" />
             <fileset dir="${build.dir}" includes="org/broadinstitute/cga/tools/gatk/walkers/cancer/**" />
             <fileset dir="${build.dir}" includes="org/broadinstitute/cga/tools/gatk/walkers/varianteval/**" />
             <fileset dir="${build.dir}" includes="CGAText.properties" />

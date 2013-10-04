@@ -2,7 +2,6 @@ package org.broadinstitute.cga.benchmark.queue
 
 import org.broadinstitute.sting.utils.io.FileExtension
 import java.io.{IOException, PrintWriter, File}
-import scala.Enumeration
 
 import org.broadinstitute.sting.utils.exceptions.UserException
 import org.apache.commons.io.IOUtils
@@ -13,16 +12,9 @@ import scala.io.Source
 import org.broadinstitute.sting.utils.exceptions.UserException.CouldNotReadInputFile
 
 import org.broadinstitute.sting.queue.util.StringFileConversions._
-
 import org.broadinstitute.sting.queue.util.Logging
 
-/**
- * Enumeration with different classes of bam files.
- */
-object BamType extends Enumeration {
-    type BamType = Value
-    val TUMOR, NORMAL, SPIKED = Value
-}
+
 
 import BamType._
 
@@ -31,14 +23,14 @@ class AbbreviatedFile( file: File , val abbreviation: String) extends File(file)
     
 }
 
-class AnnotatedBamFile(file: File , val typeOfBam: BamType, name: String) extends AbbreviatedFile(file, name) {
+class AnnotatedBamFile(file: File , val typeOfBam: BamType, abbreviation: String) extends AbbreviatedFile(file, abbreviation) {
+    def toOutputString =  "%s\t%s\t%s".format(typeOfBam,getAbsolutePath, abbreviation)
 }
 
 object AnnotatedBamFile extends Logging{
     import BamType._
     def readBamTypesFile(typesFile: File) = {
         try{
-
             val source = Source.fromFile(typesFile)
 
             val lines = source.getLines()
@@ -63,7 +55,7 @@ object AnnotatedBamFile extends Logging{
         var writer: PrintWriter = null
         try{
             writer = new PrintWriter(outputFile)
-            bamFiles.foreach(file => writer.println( "%s\t%s\t%s".format(file.typeOfBam,file.getAbsolutePath, file.abbreviation) ) )
+            bamFiles.foreach(file => writer.println(file.toOutputString ) )
         } catch {
             case e: IOException => throw new UserException.CouldNotCreateOutputFile(outputFile, "Could not write bam types file.",e)
         } finally {
