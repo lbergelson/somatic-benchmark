@@ -49,7 +49,7 @@ class GatherResults extends QScript with Logging{
 
 
             val makeGraphs = new RscriptCommandLineFunction
-            makeGraphs.script = "make_graphs.r"
+            makeGraphs.script = "make_graphs.R"
             makeGraphs.args = List("graphs-%s", "falsePositiveCounts-%s.tsv", "falseNegativeCounts-%s.tsv").map( _.format( variantType ))
 
             add(makeGraphs)
