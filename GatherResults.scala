@@ -6,6 +6,7 @@ import org.broadinstitute.sting.queue.util.Logging
 import scala.io.Source
 import org.apache.commons.io.IOUtils
 import org.broadinstitute.sting.queue.library.cga.benchmark.AnnotatedBamFile
+import org.broadinstitute.sting.utils.exceptions.UserException
 
 /**
 Traverse the output directories of RunBenchmark and gather results.
@@ -49,7 +50,7 @@ class GatherResults extends QScript with Logging{
 
             val makeGraphs = new RscriptCommandLineFunction
             makeGraphs.script = "make_graphs.r"
-            makeGraphs.args = List("graphs-%s", "falsePositiveCounts-%s.tsv", "diffResults-%s.tsv").map( _.format( variantType ))
+            makeGraphs.args = List("graphs-%s", "falsePositiveCounts-%s.tsv", "falseNegativeCounts-%s.tsv").map( _.format( variantType ))
 
             add(makeGraphs)
         }
@@ -122,7 +123,7 @@ class GatherResults extends QScript with Logging{
 
         val stats = new ComputeIndelStats{
             this.sitesFiles = diffOuts.toList
-            this.results = new File("diffResults-%s.tsv".format(variantType))
+            this.results = new File("falseNegativeCounts-%s.tsv".format(variantType))
         }
 
         add(stats)
@@ -146,19 +147,28 @@ class GatherResults extends QScript with Logging{
         val tool: String = splits(0)
 
         val normalName: String = splits(1).drop(1)
-        val normal: File = DirectoryMetaData.bams(normalName)
+        val normal: File = DirectoryMetaData.getFromBamtypes(normalName)
 
-        val tumorName :String = splits(2).drop(1)
-        val (tumor, fraction) = if (hasSpikeIn) {
-            val fraction = splits(3).toDouble
-            (DirectoryMetaData.bams(tumorName+"_"+splits(3)), Some(fraction))
-        } else {
-            (DirectoryMetaData.bams(tumorName), None)
-        }
+        val fraction = if(hasSpikeIn){
+            Some(splits(3).toDouble)
+        } else
+            None
+
+
+        val tumorName :String = splits(2).drop(1)+(fraction.map("_"+_).getOrElse(""))
+
+        val tumor = DirectoryMetaData.getFromBamtypes(tumorName)
+
     }
 
     object DirectoryMetaData{
-        lazy val bams: Map[String, AnnotatedBamFile] = AnnotatedBamFile.readBamTypesFile("bams.bamtype").map(bam => bam.abbreviation -> bam).toMap
+        private val bamTypesFile: File = "bams.bamtype"
+
+        def getFromBamtypes(name: String) = {
+            bams.getOrElse(name, throw new UserException(s"Tried to lookup ${name} in ${bamTypesFile}, but it did not exist."))
+        }
+        //bams loaded from bam maps file
+        lazy val bams: Map[String, AnnotatedBamFile] = AnnotatedBamFile.readBamTypesFile(bamTypesFile).map(bam => bam.abbreviation -> bam).toMap
     }
 
 

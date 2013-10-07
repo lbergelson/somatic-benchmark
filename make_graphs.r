@@ -30,8 +30,8 @@ graph_false_positives <- function(outputdir, depths, fpCounts) {
 }
        
 #Create the false negatives graphs
-graph_false_negatives <- function(outputdir, depths, diffResults){
-  fn <- read.delim(diffResults)
+graph_false_negatives <- function(outputdir, depths, fnCounts){
+  fn <- read.delim(fnCounts)
   
   merged <- addDepths(fn, depths)
   qplot(Tumor_Coverage, FN, data=merged,color=Tool,  facets=~Fraction, geom="point" ) + theme_bw()
@@ -45,7 +45,7 @@ graph_false_negatives <- function(outputdir, depths, diffResults){
 
 
 #Get command line arguments
-#usage <outputdir> <fpCounts.tsv> <diffresults.tsv>
+#usage <outputdir> <fpCounts.tsv> <fnCounts.tsv>
 
 outputdir <- commandArgs(trailingOnly=TRUE)[1]
 fpCounts <- commandArgs(trailingOnly=TRUE)[2]
