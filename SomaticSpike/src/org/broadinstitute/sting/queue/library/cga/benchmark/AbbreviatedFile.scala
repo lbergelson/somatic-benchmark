@@ -88,7 +88,7 @@ object AnnotatedBamFile extends Logging{
     }
 
     private def namesAreUnique(bamFiles: Seq[AnnotatedBamFile]) = {
-        bamFiles.map(_.abbreviation).distinct.length != bamFiles.length
+        bamFiles.map(_.abbreviation).distinct.length == bamFiles.length
     }
 
     private def warnIfAbbreviationsAreNotUnique(bamFiles: Seq[AnnotatedBamFile]) = {
