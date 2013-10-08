@@ -71,21 +71,12 @@
         <javac srcdir="src" destdir="${build.dir}" classpath="${gatk.classpath}" debug="true" debuglevel="lines,vars,source" />
     </target>
 
-    <target name="scala.compile" depends="init,compile">
-        <mkdir dir="${scala.classes}"/>
-        <echo>Building external Scala...</echo>
-        <scalac fork="true" jvmargs="-Xmx512m" destdir="${scala.classes}" classpathref="scala.dependencies" deprecation="yes" unchecked="yes" addparams="-feature">
-            <src path="src" />
-            <include name="**/*.scala" />
-        </scalac>
-    </target>
-
     <target name="insertversion" depends="generate.build.version">
 	<echo message="${build.dir}/CGAText.properties" />
 	<concat destfile="${build.dir}/CGAText.properties">BenchmarkVersion=${build.version}</concat>
     </target>
 
-    <target name="dist" depends="init,compile,scala.compile,insertversion">
+    <target name="dist" depends="init,compile,insertversion">
         <jar jarfile="${dist.dir}/CancerGenomeAnalysisTools.jar">
             <fileset dir="${build.dir}" includes="org/broadinstitute/cga/tools/gatk/walkers/cancer/**" />
             <fileset dir="${build.dir}" includes="org/broadinstitute/cga/tools/gatk/walkers/varianteval/**" />

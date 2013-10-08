@@ -107,12 +107,12 @@ class GenerateBenchmark extends QScript with Logging {
 
             //fracture bams
             val fractureOutDir = new File(output_dir, "data_1g_wgs")
-            val (splitBams: Traversable[File], fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, pieces, fractureOutDir)).unzip
+            val (splitBams, fractureCmds) = bams.map(FractureBams.makeFractureJobs(_, referenceFile, libraries, pieces, fractureOutDir)).unzip
             fractureCmds.flatten.foreach(add(_))
 
 
             //merge bams
-            val (mergedBams, mergers) = MergeBams.makeMergeBamsJobs(fractureOutDir, splitBams, libraries, pieces)
+            val (mergedBams, mergers) = MergeBams.makeMergeBamsJobs(fractureOutDir, splitBams.flatten, libraries, pieces)
             addAll(mergers)
             mergedBams
 
@@ -358,13 +358,8 @@ class GenerateBenchmark extends QScript with Logging {
 
         private val nameTemplate = ".%s.bam"
 
-        def makeMergeBamsJobs(dir: File, splitBams: Traversable[File], libraries: Seq[String], pieces: Int) = {
-
+        def makeMergeBamsJobs(dir: File, splitBams: Traversable[File], libraries: Seq[String], pieces: Int): (Seq[AnnotatedBamFile], Seq[MergeSamFiles]) = {
             val nameCalculator = new BamFileNameCalculator(is_test, splitBams, libraries, pieces )
-
-            val tumorJobs = makeJobs(nameCalculator.tumorFiles, TUMOR)
-            val normalJobs = makeJobs(nameCalculator.normalFiles, NORMAL)
-            (tumorJobs++normalJobs).unzip
 
             def makeJobs(bamNames: Seq[String], bamType: BamType): Seq[(AnnotatedBamFile, MergeSamFiles)] ={
                 logger.debug("names="+ bamNames.mkString(",%n".format()))
@@ -383,6 +378,12 @@ class GenerateBenchmark extends QScript with Logging {
                         (mergedFile, merge)
                 }
             }
+
+            val tumorJobs = makeJobs(nameCalculator.tumorFiles, TUMOR)
+            val normalJobs = makeJobs(nameCalculator.normalFiles, NORMAL)
+            (tumorJobs++normalJobs).unzip
+
+
 
         }
 
