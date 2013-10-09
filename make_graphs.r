@@ -20,12 +20,12 @@ graph_false_positives <- function(outputdir, depths, fpCounts) {
   fp <- read.delim(fpCounts)
   
   merged <- addDepths(fp, depths)
-  qplot(Tumor_Coverage, False_Positives, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw()
+  qplot(Tumor_Coverage, False_Positives, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw() + scale_y_log10() +scale_x_log10()
   ggsave(file=paste(outputdir,"/plot.png",sep=""), height=5, width = 10)
   
   
   merged <- subset(merged, Normal_Coverage > 25)
-  qplot(Tumor_Coverage, False_Positives, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw()
+  qplot(Tumor_Coverage, False_Positives, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw() + scale_y_log10() +scale_x_log10()
   ggsave(file=paste(outputdir,"/high_coverage_plot.png",sep=""), height=5, width = 10)
 }
        
@@ -50,6 +50,14 @@ graph_false_negatives <- function(outputdir, depths, diffResults){
 outputdir <- commandArgs(trailingOnly=TRUE)[1]
 fpCounts <- commandArgs(trailingOnly=TRUE)[2]
 fnCounts <- commandArgs(trailingOnly=TRUE)[3]
+print("Output directory: ") 
+print(outputdir)
+
+print("False positives file: ")
+print(fpCounts)
+
+print("False negatives file: ")
+print(fnCounts)
 
 #Create the output directory
 dir.create(outputdir,showWarnings=FALSE)
