@@ -32,6 +32,7 @@ class AbbreviatedFile( file: File , val abbreviation: String) extends File(file)
 }
 
 class AnnotatedBamFile(file: File , val typeOfBam: BamType, abbreviation: String) extends AbbreviatedFile(file, abbreviation) {
+    override def withPath(path: String) = new AnnotatedBamFile(path, typeOfBam, abbreviation)
     def toOutputString =  "%s\t%s\t%s".format(typeOfBam,getAbsolutePath, abbreviation)
 }
 
