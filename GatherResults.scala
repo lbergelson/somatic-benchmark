@@ -24,6 +24,9 @@ class GatherResults extends QScript with Logging{
     @Input(doc = "False negative test root directories.", required = false)
     var false_negative: Seq[File] = List(new File("spiked") )
 
+    @Input(doc = "The bamtypes file", required = false)
+    var bamtypes: File = "bams.bamtype"
+
     @Argument(fullName="no_false_positives", shortName="nofp", doc="Run false positive analysis.", required=false)
     var no_false_positives: Boolean = false
 
@@ -162,13 +165,12 @@ class GatherResults extends QScript with Logging{
     }
 
     object DirectoryMetaData{
-        private val bamTypesFile: File = "bams.bamtype"
 
         def getFromBamtypes(name: String) = {
-            bams.getOrElse(name, throw new UserException(s"Tried to lookup ${name} in ${bamTypesFile}, but it did not exist."))
+            bams.getOrElse(name, throw new UserException(s"Tried to lookup ${name} in ${bamtypes}, but it did not exist."))
         }
         //bams loaded from bam maps file
-        lazy val bams: Map[String, AnnotatedBamFile] = AnnotatedBamFile.readBamTypesFile(bamTypesFile).map(bam => bam.abbreviation -> bam).toMap
+        lazy val bams: Map[String, AnnotatedBamFile] = AnnotatedBamFile.readBamTypesFile(bamtypes).map(bam => bam.abbreviation -> bam).toMap
     }
 
 
