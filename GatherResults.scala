@@ -266,7 +266,7 @@ class GatherResults extends QScript with Logging{
             Source.fromFile(vcftoolsOut).getLines().toList.map(assignIndels)
         } catch {
             case e: IOException =>
-            logger.error(e.getMessage)
+            logger.error("IO Error reading diff file:" + e.getMessage)
             List((None, None))
         }
 
