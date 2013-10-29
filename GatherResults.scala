@@ -51,9 +51,11 @@ class GatherResults extends QScript with Logging{
 
 
 
-            val makeGraphs = new RscriptCommandLineFunction
+            val makeGraphs = new MakeGraphs()
             makeGraphs.script = "make_graphs.R"
-            makeGraphs.args = List("graphs-%s", "falsePositiveCounts-%s.tsv", "falseNegativeCounts-%s.tsv").map( _.format( variantType ))
+            makeGraphs.graphs_folder = s"graphs-$variantType"
+            makeGraphs.fp_tsv = s"falsePositiveCounts-${variantType}.tsv"
+            makeGraphs.fn_tsv = s"falseNegativeCounts-${variantType}.tsv"
 
             add(makeGraphs)
         }
@@ -158,7 +160,7 @@ class GatherResults extends QScript with Logging{
             None
 
 
-        val tumorName :String = splits(2).drop(1)+(fraction.map("_"+_).getOrElse(""))
+        val tumorName :String = splits(2).drop(1)+ fraction.map("_" + _).getOrElse("")
 
         val tumor = DirectoryMetaData.getFromBamtypes(tumorName)
 
@@ -283,14 +285,32 @@ class GatherResults extends QScript with Logging{
         }
     }
 
+
+
+
     class RscriptCommandLineFunction extends CommandLineFunction {
         @Input(doc="R script to execute")
         var script: File = _
 
-        @Argument(doc="List of commandline arguments")
+        @Argument(doc="List of commandline arguments", required=false)
         var  args: List[String] = Nil
 
         def commandLine: String = required("Rscript")  +required(script)+ repeat(args)
     }
 
+    class MakeGraphs extends RscriptCommandLineFunction{
+        @Input(doc="false positives tsv file")
+        var fp_tsv: File = _
+
+        @Input(doc="false negatives tsv file")
+        var fn_tsv: File = _
+
+        @Input(doc="output folder for graphs")
+        var graphs_folder: File = _
+
+        override def commandLine: String = {
+            this.args = List(graphs_folder, fp_tsv, fn_tsv)
+            super.commandLine
+        }
+    }
 }
