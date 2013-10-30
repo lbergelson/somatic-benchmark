@@ -41,7 +41,7 @@ class GenerateBenchmark extends QScript with Logging {
     val referenceFile: File = new File("/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta")
 
     @Input(fullName="input_bams", shortName="I", doc = "Base bam files")
-    var bams: Seq[File] = Nil
+    var bams: Seq[TaggedFile] = Nil
 
     @Input(fullName="spike_contributor_bam", shortName="spike_bam", doc="Bam file to spike variants in from")
     var spikeContributorBAM: File = _
@@ -100,6 +100,7 @@ class GenerateBenchmark extends QScript with Logging {
         logger.info("Individuals are %s and %s".format(primaryIndividual, spikeInIndividual))
 
         val mergedBams = if(!spike_in_only) {
+            // fracture and merge bams
 
             //the last library in the list is considered the "normal"
             val libraries: Seq[String] = ReadFromBamHeader.getLibraries(bams)
@@ -117,6 +118,8 @@ class GenerateBenchmark extends QScript with Logging {
             mergedBams
 
         } else {
+            //don't perform fracturing, consider the last bam in the list the "normal"
+            //if bams have tags use that as the name
             val reverseBams = bams.reverse
             reverseBams.tail.map(file => new AnnotatedBamFile(file, TUMOR, file.getName)) :+ new AnnotatedBamFile(reverseBams.head, NORMAL, reverseBams.head.getName)
         }
@@ -168,6 +171,7 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
 
+
     def ensureFileExists(file: File) {
         if (!file.exists() ) {
             throw new CouldNotReadInputFile(file)
@@ -175,9 +179,7 @@ class GenerateBenchmark extends QScript with Logging {
     }
 
 
-    trait BaseArguments extends CommandLineFunction with RetryMemoryLimit{
-
-    }
+    trait BaseArguments extends CommandLineFunction with RetryMemoryLimit{}
 
     trait GeneratorArguments extends CommandLineGATK with BaseArguments {
         this.reference_sequence = referenceFile
