@@ -15,12 +15,17 @@ addDepths <- function(data, depths){
     return(merged)
 }
 
+calc_fpRate <- function(falsePositives) {
+   falsePositives/ 32
+} 
+
 #Create the false positives graphs
 graph_false_positives <- function(outputdir, depths, fpCounts) {
   fp <- read.delim(fpCounts)
   
   merged <- addDepths(fp, depths)
-  qplot(Tumor_Coverage, False_Positives, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw() + scale_y_log10() +scale_x_log10()
+  merged$False_Positive_Rate <- sapply(merged$False_Positives, fpRate)
+  qplot(Tumor_Coverage, False_Positive_Rate, data=merged,color=Tool, facets=~Normal_Coverage, geom="point" ) + theme_bw() + scale_y_log10() +scale_x_log10()
   ggsave(file=paste(outputdir,"/plot.png",sep=""), height=5, width = 10)
   
   
