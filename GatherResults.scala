@@ -160,8 +160,8 @@ class GatherResults extends QScript with Logging{
             None
 
 
-        val tumorName :String = splits(2).drop(1)+ fraction.map("_" + _).getOrElse("")
-
+        val tumorNameBase : String = splits(2).drop(1)
+        val tumorName :String = tumorNameBase + fraction.map("_" + _).getOrElse("")
         val tumor = DirectoryMetaData.getFromBamtypes(tumorName)
 
     }
@@ -197,7 +197,7 @@ class GatherResults extends QScript with Logging{
                 val metaData = new DirectoryMetaData(file)
 
 
-                "%s\t%s\t%s\t%s\t%s\t%s\t%s".format(metaData.tool, metaData.normalName, metaData.tumorName,
+                "%s\t%s\t%s\t%s\t%s\t%s\t%s".format(metaData.tool, metaData.normalName, metaData.tumorNameBase,
                                                     metaData.fraction.get, onlyFirst, onlySecond,matches)
             }
 
