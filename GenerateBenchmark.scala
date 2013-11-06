@@ -67,6 +67,10 @@ class GenerateBenchmark extends QScript with Logging {
     @Argument(doc = "Spike directly into the given bams without any mixing steps.",required = false)
     var spike_in_only: Boolean = false
 
+    @Argument(doc = "a name for a bam file.  These will be used if spike_in_only is specified.  The  number of names specified must be 0 or exactly" +
+        "match the number of input bams specified", fullName="bam_name", shortName="name", required=false)
+    var bam_names: Seq[String] = Nil
+
     @Argument(doc = "Stops the computation of depth of coverage information", required = false)
     var no_depths: Boolean = false
 
@@ -117,8 +121,25 @@ class GenerateBenchmark extends QScript with Logging {
             mergedBams
 
         } else {
-            val reverseBams = bams.reverse
-            reverseBams.tail.map(file => new AnnotatedBamFile(file, TUMOR, file.getName)) :+ new AnnotatedBamFile(reverseBams.head, NORMAL, reverseBams.head.getName)
+            //don't perform fracturing, consider the last bam in the list the "normal"
+            //if bams have tags use that as the name
+            if(bam_names.length == 0) {
+                val reverseBams = bams.reverse
+                val tumors  =  reverseBams.tail
+                val normal = reverseBams.head
+                tumors.map(file => new AnnotatedBamFile(file, TUMOR, file.getName)) :+ new AnnotatedBamFile(normal, NORMAL, normal.getName)
+
+            } else {
+                if(bam_names.length != bams.length){
+                    throw new UserException.BadInput(s"Number of bams specified (${bams.length}) must exactly match the number of names specified (${bam_names.length}");
+                }
+
+                val reverseBamsWithNames: Seq[(GenerateBenchmark.this.type#File, String)] = (bams zip bam_names).reverse
+                val tumors  =  reverseBamsWithNames.tail
+                val normal = reverseBamsWithNames.head
+                tumors.map{ info=>val (file, name) = info; new AnnotatedBamFile(file, TUMOR, name)} :+ new AnnotatedBamFile(normal._1, NORMAL, normal._2)
+
+            }
         }
 
 
