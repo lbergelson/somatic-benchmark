@@ -75,7 +75,8 @@ calc_length <- function( ref, tumor, type){
 
 maf <- read.table(file=inputfile,header=TRUE, quote='', sep="\t", stringsAsFactors=FALSE)
 
-samples <- length( unique(maf$Tumor_Sample_Barcode)) 
+maf$Pair_ID <- paste(gsub("-Tumor","",maf$Tumor_Sample_Barcode), "-",  gsub("-Normal","",maf$Matched_Norm_Sample_Barcode))
+samples <- length( unique(maf$Pair_ID)) 
 
 maf$Chromosome <- sort_chromosomes(maf)
 
@@ -89,7 +90,7 @@ maf$Classification <-  mapply(cosmic_or_dbsnp,maf$Matches_COSMIC_Mutation, maf$O
 
 
 maf$Indel_Length = mapply( calc_length, maf$Reference_Allele, maf$Tumor_Seq_Allele2, maf$Variant_Type)
-perc <- ddply(maf, "Tumor_Sample_Barcode", summarise, 
+perc <- ddply(maf, "Pair_ID", summarise, 
               percent_dbSNP = sum(Overlaps_DB_SNP_Site)/length(Overlaps_DB_SNP_Site), 
               percent_COSMIC= sum(Matches_COSMIC_Mutation)/length(Matches_COSMIC_Mutation),
               samples="all")
@@ -99,15 +100,18 @@ maf <- mutate(maf, Tumor_Depth = t_alt_count+t_ref_count)
 
 #### Making graphs
 plot_percentage_and_count <- function(df, variable, name, outputdir){
+  #Determine font size for name
+  #name_length <- max(nchar(df$Pair_ID)) 
+   
 
   #sort factor by length
-  df$Tumor_Sample_Barcode <- with(df, reorder(Tumor_Sample_Barcode, Tumor_Sample_Barcode, function(x) length(x)))
+  df$Pair_ID <- with(df, reorder(Pair_ID, Pair_ID, function(x) length(x)))
 
-  percent <- ggplot(df, aes(x = Tumor_Sample_Barcode)) + geom_bar(aes_string(fill = variable ), position = 'fill') +
+  percent <- ggplot(df, aes(x = Pair_ID)) + geom_bar(aes_string(fill = variable ), position = 'fill') +
     coord_flip() +theme_bw(base_family='Helvetica')+ scale_fill_brewer(palette="Paired") +
-    theme(legend.position = "none") +labs(y="Percent")
+    theme(legend.position = "none", strip.text.x = element_text(size=6)) +labs(y="Percent")
 
-  counts <- ggplot(df, aes(x = Tumor_Sample_Barcode)) + geom_bar(aes_string(fill = variable)) + coord_flip() +
+  counts <- ggplot(df, aes(x = Pair_ID)) + geom_bar(aes_string(fill = variable)) + coord_flip() +
     theme_bw(base_family='Helvetica')+ scale_fill_brewer(palette="Paired") +
     theme(axis.title.y=element_blank(), axis.text.y=element_blank())
 
@@ -136,10 +140,10 @@ save_with_name("allele_fraction_vs_Tumor_Depth_by_VariantType_with_Density")
 qplot(data=maf,x=allele_fraction, fill=Classification) + theme_bw()
 save_with_name("allele_fraction_all_samples") 
 
-qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Tumor_Sample_Barcode, ncol=4)+theme_bw() + theme(strip.text.x = element_text(size=6))
+qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4)+theme_bw() + theme(strip.text.x = element_text(size=6))
 save_with_name("allele_fraction_by_sample", height=max(samples/4,4))
 
-qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Tumor_Sample_Barcode, ncol=4, scales="free_y") +theme_bw() + theme(strip.text.x = element_text(size=6))
+qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4, scales="free_y") +theme_bw() + theme(strip.text.x = element_text(size=6))
 save_with_name("allele_fraction_by_sample_normalized", height=max(samples/4,4), width=10)
 
 plot_percentage_and_count(maf, "Classification", "COSMIC_overlap_by_sample", outputdir)
