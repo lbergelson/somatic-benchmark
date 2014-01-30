@@ -44,12 +44,7 @@ sort_chromosomes <- function(df){
 }
 
 
-save_with_name <- function(name,height=10, width=10) {
-  name_pieces <- c(outputdir, "/", name, ".pdf")
-  filename <- paste(name_pieces, collapse='')
-  print(paste("Saving ",filename, sep=''))
-  ggsave(file=filename, height=height, width=width, units="in", limitsize=FALSE)  
-}
+
 
 cosmic_or_dbsnp <- function(is_cosmic, is_dbsnp){
   if (is_cosmic)
@@ -70,6 +65,17 @@ calc_length <- function( ref, tumor, type){
   }
 }
 
+coding_or_non_coding <- function(variant_classification){
+    coding <-  c("Nonsense_Mutation","Nonstop_Mutation","Missense_Mutation", "Splice_Site", "Silent","Frame_Shift_Del",
+         "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins")
+
+    if (variant_classification %in% coding){
+        return("Coding")
+    }
+    else {
+        return("Non_Coding")
+    }
+}
 
 ### Preparing data
 
@@ -88,13 +94,9 @@ maf$Overlaps_DB_SNP_Site <- NAToFalse(! maf$dbSNP_RS =="" )
 
 maf$Classification <-  mapply(cosmic_or_dbsnp,maf$Matches_COSMIC_Mutation, maf$Overlaps_DB_SNP_Site)
 
+maf$Coding <- mapply(coding_or_non_coding, maf$Variant_Classification)
 
 maf$Indel_Length = mapply( calc_length, maf$Reference_Allele, maf$Tumor_Seq_Allele2, maf$Variant_Type)
-perc <- ddply(maf, "Pair_ID", summarise, 
-              percent_dbSNP = sum(Overlaps_DB_SNP_Site)/length(Overlaps_DB_SNP_Site), 
-              percent_COSMIC= sum(Matches_COSMIC_Mutation)/length(Matches_COSMIC_Mutation),
-              samples="all")
-
 
 maf <- mutate(maf, Tumor_Depth = t_alt_count+t_ref_count)
 
@@ -123,45 +125,67 @@ plot_percentage_and_count <- function(df, variable, name, outputdir){
 }
 
 
+draw_graphs <- function(basedir, subdir, maf){
+    print(paste("drawing graphs for ", subdir))
+    outputdir <- paste(basedir, subdir, sep="/")
+    dir.create(outputdir)
+
+    save_with_name <- function(name,height=10, width=10) {
+      name_pieces <- c(outputdir, "/",subdir,"_",name, ".pdf")
+      filename <- paste(name_pieces, collapse='')
+      print(paste("Saving ",filename, sep=''))
+      ggsave(file=filename, height=height, width=width, units="in", limitsize=FALSE)  
+    }
+    ggplot(maf, aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red"))
+    save_with_name("allele_fraction_vs_tumor_depth")
+    
+    ggplot(maf[maf$Variant_Type == "SNP",], aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=50)+ scale_x_log10() + scale_fill_gradientn( colours=c("white","red"))
+    save_with_name("allele_fraction_vs_tumor_depth_snps")
+
+    ggplot(maf[maf$Variant_Type %in% c("INS","DEL"),], aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=50)+ scale_x_log10() + scale_fill_gradientn( colours=c("white","red"))
+    save_with_name("allele_fraction_vs_tumor_depth_indels")
+    
+    qplot(data=maf,x=allele_fraction, fill=Classification) + theme_bw()
+    save_with_name("allele_fraction_all_samples") 
+    
+    qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4)+theme_bw() + theme(strip.text.x = element_text(size=6))
+    save_with_name("allele_fraction_by_sample", height=max(samples/4,4))
+    
+    qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4, scales="free_y") +theme_bw() + theme(strip.text.x = element_text(size=6))
+    save_with_name("allele_fraction_by_sample_normalized", height=max(samples/4,4), width=10)
+    
+    plot_percentage_and_count(maf, "Classification", "COSMIC_overlap_by_sample", outputdir)
+    
+    qplot(data=maf, x=Tumor_Depth) + theme_bw() + scale_x_log10()
+    save_with_name("tumor_depth")
+
+    qplot(data=maf, x=allele_fraction) +theme_bw()
+    save_with_name("allele_fraction")
+
+    #subset_to_indels
+    indels_only <- maf[maf$Variant_Type %in% c("DEL","INS"), ]
+    
+    if (dim(indels_only)[1]!=0) {
+    ggplot(data=maf)+ geom_bar(subset=.(Variant_Type == "DEL"), aes(x=Indel_Length,y=-..count..,fill=Variant_Classification,stat="identity")) + geom_bar(subset=.(Variant_Type=="INS"), aes(x=Indel_Length,y=..count.., fill=Variant_Classification, stat="identity")) + ylab("Deletions - Insertions") + theme_bw()
+    save_with_name("stacked_indel_lengths", height=5, width=7)
+    
+    ggplot(data=indels_only)+ geom_bar( aes(x=Indel_Length,y=..count..,fill=Variant_Classification,stat="identity")) + facet_wrap(facets=~Variant_Type, drop=TRUE) + theme_bw()
+    save_with_name("indel_lengths_by_type", height=5, width=7)
+    
+    plot_percentage_and_count(indels_only, "Variant_Classification", "indels_by_type", outputdir)
+    } else {
+    print("no indels in maf")
+    }
 
 
-ggplot(maf, aes(x=Tumor_Depth, y = allele_fraction)) + geom_point(size=.5, alpha=.1) + theme_bw() + scale_x_log10() 
-save_with_name("allele_fraction_vs_Tumor_Depth")
-ggplot(maf, aes(x=Tumor_Depth, y = allele_fraction, color=Classification)) + guides(colour = guide_legend(override.aes = list(alpha = 1))) + geom_point(size=.5, alpha=.1) + geom_density2d(size=.4) + theme_bw() + scale_x_log10() 
-save_with_name("allele_fraction_vs_Tumor_Depth_with_Density")
+    #subset to snps
+    snps_only <- maf[!(maf$Variant_Type %in% c("DEL","INS")), ]
+    qplot(data=snps_only, x=i_t_lod_fstar)+theme_bw()
+    save_with_name("lod_score")
 
-
-ggplot(maf, aes(x=Tumor_Depth, y = allele_fraction)) + facet_wrap(facets=~Variant_Type, drop=TRUE) + geom_point(size=.5, alpha=.1) +  theme_bw()+ scale_x_log10()
-save_with_name("allele_fraction_vs_Tumor_Depth_by_VariantType")
-ggplot(maf, aes(x=Tumor_Depth, y = allele_fraction, color=Classification)) + guides(colour = guide_legend(override.aes = list(alpha = 1))) + facet_wrap(facets=~Variant_Type, drop=TRUE) + geom_point(size=.5, alpha=.1) + geom_density2d(alpha = .8) + theme_bw()+ scale_x_log10()
-save_with_name("allele_fraction_vs_Tumor_Depth_by_VariantType_with_Density")
-
-
-qplot(data=maf,x=allele_fraction, fill=Classification) + theme_bw()
-save_with_name("allele_fraction_all_samples") 
-
-qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4)+theme_bw() + theme(strip.text.x = element_text(size=6))
-save_with_name("allele_fraction_by_sample", height=max(samples/4,4))
-
-qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4, scales="free_y") +theme_bw() + theme(strip.text.x = element_text(size=6))
-save_with_name("allele_fraction_by_sample_normalized", height=max(samples/4,4), width=10)
-
-plot_percentage_and_count(maf, "Classification", "COSMIC_overlap_by_sample", outputdir)
-
-#subset_to_indels
-indels_only <- maf[maf$Variant_Type %in% c("DEL","INS"), ]
-
-if (dim(indels_only)[1]!=0) {
-ggplot(data=maf)+ geom_bar(subset=.(Variant_Type == "DEL"), aes(x=Indel_Length,y=-..count..,fill=Variant_Classification,stat="identity")) + geom_bar(subset=.(Variant_Type=="INS"), aes(x=Indel_Length,y=..count.., fill=Variant_Classification, stat="identity")) + ylab("Deletions - Insertions")
-save_with_name("stacked_indel_lengths", height=5, width=7)
-
-ggplot(data=indels_only)+ geom_bar( aes(x=Indel_Length,y=..count..,fill=Variant_Classification,stat="identity")) + facet_wrap(facets=~Variant_Type, drop=TRUE)
-save_with_name("indel_lengths_by_type", height=5, width=7)
-
-plot_percentage_and_count(indels_only, "Variant_Classification", "indels_by_type", outputdir)
-} else {
-print("no indels in maf")
 }
 
+draw_graphs(outputdir, "all", maf)
 
-
+draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
+draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
