@@ -182,9 +182,13 @@ draw_graphs <- function(basedir, subdir, maf){
 
     if( dim(snps_only)[1]!=0){
         shared_graphs(snps_only, outputdir,paste0(subdir,"_snps")) 
-
-        qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+theme_bw()
-        save_with_name("snp_lod_score")
+        
+        if("i_t_lod_fstar" %in% colnames(snps_only)){
+            qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+theme_bw()
+            save_with_name("snp_lod_score")
+        } else {
+            print("no lod score in maf")
+        }
     } else {
         print("no snps in maf")
     }
