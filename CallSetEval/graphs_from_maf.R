@@ -82,7 +82,7 @@ coding_or_non_coding <- function(variant_classification){
 
 maf <- read.table(file=inputfile,header=TRUE, quote='', sep="\t", stringsAsFactors=FALSE)
 
-maf$Pair_ID <- paste(gsub("-Tumor","",maf$Tumor_Sample_Barcode), "-",  gsub("-Normal","",maf$Matched_Norm_Sample_Barcode))
+maf$Pair_ID <- paste0(gsub("-Tumor","",maf$Tumor_Sample_Barcode), "\n",  gsub("-Normal","",maf$Matched_Norm_Sample_Barcode))
 samples <- length( unique(maf$Pair_ID)) 
 
 maf$Chromosome <- sort_chromosomes(maf)
@@ -112,7 +112,7 @@ plot_percentage_and_count <- function(df, variable, name, outputdir){
 
   percent <- ggplot(df, aes(x = Pair_ID)) + geom_bar(aes_string(fill = variable ), position = 'fill') +
     coord_flip() +theme_bw(base_family='Helvetica')+ scale_fill_brewer(palette="Paired") +
-    theme(legend.position = "none", strip.text.x = element_text(size=6)) +labs(y="Percent")
+    theme(legend.position = "none", strip.text.x = element_text(size=6), axis.text.y= element_text(size=4)) +labs(y="Percent")
 
   counts <- ggplot(df, aes(x = Pair_ID)) + geom_bar(aes_string(fill = variable)) + coord_flip() +
     theme_bw(base_family='Helvetica')+ scale_fill_brewer(palette="Paired") +
@@ -148,10 +148,10 @@ shared_graphs <- function(maf, outputdir, prefix){
       qplot(data=maf,x=allele_fraction, fill=Classification) + theme_bw()
       save_with_name("allele_fraction_all_samples") 
       
-      qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4)+theme_bw() + theme(strip.text.x = element_text(size=6))
+      qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4)+theme_bw() + theme(strip.text.x = element_text(size=4))
       save_with_name("allele_fraction_by_sample", height=max(samples/4,4))
       
-      qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4, scales="free_y") +theme_bw() + theme(strip.text.x = element_text(size=6))
+      qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4, scales="free_y") +theme_bw() + theme(strip.text.x = element_text(size=4))
       save_with_name("allele_fraction_by_sample_normalized", height=max(samples/4,4), width=10)
       
       plot_percentage_and_count(maf, "Classification", paste(prefix,"_COSMIC_overlap_by_sample"), outputdir)
