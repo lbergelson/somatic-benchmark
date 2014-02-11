@@ -137,16 +137,23 @@ bind_save_function <- function(outputdir, prefix){
     }     
 }
 
+##############
+#scale_x_tumor_depth(maf)
+#takes a maf data frame as input, returns a log10 scaled x axis with ticks appropriate to the maf's tumor depth
+##############
+scale_x_tumor_depth <- function(maf) {
+      potential_breaks <- c(5,10,20,30,40,50,60,100,150,200,300,500,1000,2000,3000,5000,10000) 
+      breaks_to_use <- potential_breaks[potential_breaks <= max(maf$Tumor_Depth)]
+      return(scale_x_log10(breaks=breaks_to_use, minor_breaks<-c()))
+}
+
 #graphs that make sense for snps and indels together or apart
 shared_graphs <- function(maf, outputdir, prefix){
       save_with_name <- bind_save_function(outputdir, prefix) 
          
-      potential_breaks <- c(5,10,20,30,40,50,60,100,150,200,300,500,1000,2000,3000,5000,10000) 
-      breaks_to_use <- potential_breaks[potential_breaks <= max(maf$Tumor_Depth)]
-
       samples <- length( unique(maf$Pair_ID))
 
-      ggplot(maf, aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_log10(breaks=breaks_to_use, minor_breaks<-c())
+      ggplot(maf, aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
       save_with_name("allele_fraction_vs_tumor_depth")
       
       qplot(data=maf,x=allele_fraction, fill=Classification) + theme_bw()
@@ -160,7 +167,7 @@ shared_graphs <- function(maf, outputdir, prefix){
       
       plot_percentage_and_count(maf, "Classification", paste0(prefix,"_COSMIC_overlap_by_sample"), outputdir)
       
-      qplot(data=maf, x=Tumor_Depth, fill=Classification) + theme_bw() + scale_x_log10(breaks=breaks_to_use, minor_breaks<-c())
+      qplot(data=maf, x=Tumor_Depth, fill=Classification) + theme_bw() + scale_x_tumor_depth(maf)
       save_with_name("tumor_depth_all_samples")
       
 
@@ -190,6 +197,9 @@ draw_graphs <- function(basedir, subdir, maf){
         if("i_t_lod_fstar" %in% colnames(snps_only)){
             qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+theme_bw()
             save_with_name("snp_lod_score")
+
+            ggplot(maf, aes(x=Tumor_Depth, y= i_t_lod_fstar)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
+            save_with_name("snp_lod_score_vs_tumor_depth")    
         } else {
             print("no lod score in maf")
         }
