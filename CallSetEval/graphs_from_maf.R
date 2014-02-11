@@ -212,12 +212,12 @@ draw_graphs <- function(basedir, subdir, maf){
     
     if (dim(indels_only)[1]!=0) {
         shared_graphs(indels_only,outputdir, paste0(subdir,"_indels") )
-        ggplot(data=maf)+ geom_bar(subset=.(Variant_Type == "DEL"), aes(x=Indel_Length,y=-..count..,fill=Variant_Classification,stat="identity")) +
-             geom_bar(subset=.(Variant_Type=="INS"), aes(x=Indel_Length,y=..count.., fill=Variant_Classification, stat="identity")) +
+        ggplot(data=maf)+ geom_bar(subset=.(Variant_Type == "DEL"), binwidth=1, aes(x=Indel_Length,y=-..count..,fill=Variant_Classification,stat="identity")) +
+             geom_bar(subset=.(Variant_Type=="INS"), binwidth=1, aes(x=Indel_Length,y=..count.., fill=Variant_Classification, stat="identity")) +
              ylab("Deletions - Insertions") + theme_bw()
         save_with_name("stacked_indel_lengths", height=5, width=7)
         
-        ggplot(data=indels_only)+ geom_bar( aes(x=Indel_Length,y=..count..,fill=Variant_Classification,stat="identity"))+
+        ggplot(data=indels_only)+ geom_bar( binwidth=1, aes(x=Indel_Length,y=..count..,fill=Variant_Classification,stat="identity"))+
             facet_wrap(facets=~Variant_Type, drop=TRUE) + theme_bw()
         save_with_name("indel_lengths_by_type", height=5, width=7)
         
