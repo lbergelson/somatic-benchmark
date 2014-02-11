@@ -79,33 +79,35 @@ coding_or_non_coding <- function(variant_classification){
 }
 
 ### Preparing data
-
-maf <- read.table(file=inputfile,header=TRUE, quote='', sep="\t", stringsAsFactors=FALSE)
-
-maf$Pair_ID <- paste0(gsub("-Tumor","",maf$Tumor_Sample_Barcode), "\n",  gsub("-Normal","",maf$Matched_Norm_Sample_Barcode))
-samples <- length( unique(maf$Pair_ID)) 
-
-maf$Chromosome <- sort_chromosomes(maf)
-
-maf$allele_fraction <- maf$t_alt_count / (maf$t_alt_count+maf$t_ref_count)
-
-maf$Matches_COSMIC_Mutation <- NAToFalse( ! maf$COSMIC_overlapping_mutations == "")
-
-maf$Overlaps_DB_SNP_Site <- NAToFalse(! maf$dbSNP_RS =="" )
-
-maf$Classification <-  mapply(cosmic_or_dbsnp,maf$Matches_COSMIC_Mutation, maf$Overlaps_DB_SNP_Site)
-
-maf$Coding <- mapply(coding_or_non_coding, maf$Variant_Classification)
-
-maf$Indel_Length = mapply( calc_length, maf$Reference_Allele, maf$Tumor_Seq_Allele2, maf$Variant_Type)
-
-maf <- mutate(maf, Tumor_Depth = t_alt_count+t_ref_count)
+prepare_data <- function(inputfile) {
+    maf <- read.table(file=inputfile,header=TRUE, quote='', sep="\t", stringsAsFactors=FALSE)
+    
+    maf$Pair_ID <- paste0(gsub("-Tumor","",maf$Tumor_Sample_Barcode), "\n",  gsub("-Normal","",maf$Matched_Norm_Sample_Barcode))
+    
+    maf$Chromosome <- sort_chromosomes(maf)
+    
+    maf$allele_fraction <- maf$t_alt_count / (maf$t_alt_count+maf$t_ref_count)
+    
+    maf$Matches_COSMIC_Mutation <- NAToFalse( ! maf$COSMIC_overlapping_mutations == "")
+    
+    maf$Overlaps_DB_SNP_Site <- NAToFalse(! maf$dbSNP_RS =="" )
+    
+    maf$Classification <-  mapply(cosmic_or_dbsnp,maf$Matches_COSMIC_Mutation, maf$Overlaps_DB_SNP_Site)
+    
+    maf$Coding <- mapply(coding_or_non_coding, maf$Variant_Classification)
+    
+    maf$Indel_Length = mapply( calc_length, maf$Reference_Allele, maf$Tumor_Seq_Allele2, maf$Variant_Type)
+    
+    maf <- mutate(maf, Tumor_Depth = t_alt_count+t_ref_count)
+    return(maf)
+}
 
 #### Making graphs
 plot_percentage_and_count <- function(df, variable, name, outputdir){
   #Determine font size for name
   #name_length <- max(nchar(df$Pair_ID)) 
    
+  samples <- length( unique(maf$Pair_ID)) 
 
   #sort factor by length
   df$Pair_ID <- with(df, reorder(Pair_ID, Pair_ID, function(x) length(x)))
@@ -121,7 +123,7 @@ plot_percentage_and_count <- function(df, variable, name, outputdir){
   g <- arrangeGrob(percent, counts, nrow=1)
   name_pieces <- c(outputdir, "/", name, ".pdf")
   filename <- paste(name_pieces, collapse='')
-  print(paste("Saving ",filename, sep=''))
+  print(paste("Saving",filename))
   ggsave(file=filename, g, height=max(samples/8,4), width=10, units="in", limitsize=FALSE)
 }
 
@@ -130,7 +132,7 @@ bind_save_function <- function(outputdir, prefix){
     save_function <- function(name,height=10, width=10) {
       name_pieces <- c(outputdir, "/",prefix,"_",name, ".pdf")
       filename <- paste(name_pieces, collapse='')
-      print(paste("Saving ",filename, sep=''))
+      print(paste("Saving",filename))
       ggsave(file=filename, height=height, width=width, units="in", limitsize=FALSE)  
     }     
 }
@@ -138,9 +140,11 @@ bind_save_function <- function(outputdir, prefix){
 #graphs that make sense for snps and indels together or apart
 shared_graphs <- function(maf, outputdir, prefix){
       save_with_name <- bind_save_function(outputdir, prefix) 
-
+         
       potential_breaks <- c(5,10,20,30,40,50,60,100,150,200,300,500,1000,2000,3000,5000,10000) 
       breaks_to_use <- potential_breaks[potential_breaks <= max(maf$Tumor_Depth)]
+
+      samples <- length( unique(maf$Pair_ID))
 
       ggplot(maf, aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_log10(breaks=breaks_to_use, minor_breaks<-c())
       save_with_name("allele_fraction_vs_tumor_depth")
@@ -154,9 +158,9 @@ shared_graphs <- function(maf, outputdir, prefix){
       qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4, scales="free_y") +theme_bw() + theme(strip.text.x = element_text(size=4))
       save_with_name("allele_fraction_by_sample_normalized", height=max(samples/4,4), width=10)
       
-      plot_percentage_and_count(maf, "Classification", paste(prefix,"_COSMIC_overlap_by_sample"), outputdir)
+      plot_percentage_and_count(maf, "Classification", paste0(prefix,"_COSMIC_overlap_by_sample"), outputdir)
       
-      qplot(data=maf, x=Tumor_Depth, fill=Classification) + theme_bw() + scale_x_log10()
+      qplot(data=maf, x=Tumor_Depth, fill=Classification) + theme_bw() + scale_x_log10(breaks=breaks_to_use, minor_breaks<-c())
       save_with_name("tumor_depth_all_samples")
       
 
@@ -167,7 +171,7 @@ shared_graphs <- function(maf, outputdir, prefix){
 
 draw_graphs <- function(basedir, subdir, maf){
     
-    print(paste("drawing graphs for ", subdir))
+    print(paste("drawing graphs for", subdir))
     outputdir <- paste(basedir, subdir, sep="/")
     if( ! file.exists(outputdir) ){
         dir.create(outputdir)
@@ -218,6 +222,7 @@ draw_graphs <- function(basedir, subdir, maf){
        
 }
 
+maf <- prepare_data(inputfile)
 draw_graphs(outputdir, "all", maf)
 draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
 draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
