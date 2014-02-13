@@ -40,7 +40,36 @@ java -jar $MutectJar \
 '--downsample_to_coverage' '1000' \
 '--enable_extended_output' \
 '--intervals' $IntervalFile \
-'--intervals' 20:2842340-36766746 \
+'--intervals' 20:2000000-4000000 \
 '--interval_set_rule' INTERSECTION
 
-cp "${OUTPUTDIR}/call_stats.txt" "${OUTPUTDIR}/final_calls.maf"
+#convert to maflite
+echo "converting to maflite"
+"/usr/bin/perl" "/xchip/tcga/gdac_prod/applications/process_mgmt/firehose_task_registry/cga/CallstatsToMaflite/broadinstitute.org/cancer.genome.analysis/00162/14/call_stats_to_maflite.pl" \
+$OUTPUTDIR/call_stats.txt \
+"19" \
+"FSTAR" \
+"$OUTPUTDIR/maflite.maf" \
+"tumor_f,init_t_lod,t_lod_fstar,t_alt_count,t_ref_count,judgement" 
+
+#apply maf validation
+echo "apply maf validation"
+"/broad/software/free/Linux/redhat_5_x86_64/pkgs/sun-java-jdk_1.6.0-21_x86_64/bin/java" "-Xmx1g" \
+"-jar" "/xchip/tcga/gdac_prod/applications/process_mgmt/firehose_task_registry/cga/ApplyMAFValidation/broadinstitute.org/cancer.genome.analysis/00163/23/ApplyMAFValidation.jar" \
+"M=$OUTPUTDIR/maflite.maf" \
+"OUTPUT_MAF=$OUTPUTDIR/maflite.maf.annotated" \
+"MATCH_MODE=Sample" \
+"V=/cga/tcga-gsc/svnreference/validation"
+
+#oncotate
+"sh" "/xchip/tcga/gdac_prod/applications/process_mgmt/firehose_task_registry/cga/Oncotator_v1/broadinstitute.org/cancer.genome.analysis/10202/47/oncotator.sh" \
+"MAFLITE" "TCGAMAF" \
+"$OUTPUTDIR/maflite.maf.annotated" \
+"$OUTPUTDIR/final_calls.maf" \
+"hg19" \
+"/xchip/cga/reference/annotation/db/oncotator_v1_ds" \
+"/xchip/cga/reference/annotation/db/tcgaMAFManualOverrides2.4.config" \
+"/xchip/tcga/gdac_prod/applications/process_mgmt/firehose_task_registry/cga/Oncotator_v1/broadinstitute.org/cancer.genome.analysis/10202/47/" \
+"CANONICAL" \
+"/xchip/tcga/Tools/python_fh/python_fh_env/"
+
