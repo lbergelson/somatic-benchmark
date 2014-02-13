@@ -57,7 +57,7 @@ class RunCallersOnKDB extends QScript with Logging{
     val TOOL_DIR = new File(LIB_DIR, "tool-scripts")
     val OUTPUT_DIR = new File("/cga/tcga-gsc/benchmark/data/evaluation/")
 
-    val KDB_ANNOTATE_SCRIPT = new File("/xchip/cga_home/louisb/kdb/cga_kdb/firehose/kdb_annotate.R")
+    val KDB_ANNOTATE_SCRIPT = new File("kdb_annotate.R")
 
 
     val pairs = Seq( new TumorNormalPair("/crsp/qa/picard_aggregation/cancer-exome-val-HCC1143-tn-full-07/12345670177/v1/12345670177.bam",
