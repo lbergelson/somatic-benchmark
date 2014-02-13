@@ -5,10 +5,8 @@ import org.broadinstitute.sting.queue.function.RetryMemoryLimit
 import java.io.File
 import java.util.Calendar
 import java.text.SimpleDateFormat
-import collection.mutable.{ HashMap, MultiMap, Set }
 import org.broadinstitute.sting.queue.util.Logging
-import scala.collection.mutable
-import scala.collection.immutable.Iterable
+import scala.io.Source
 
 
 sealed abstract class EvaluationGroup
@@ -20,6 +18,52 @@ case object NormalNormal extends EvaluationGroup
 
 
 case class TumorNormalPair(tumor: File, normal: File, individual: String, cellLine: EvaluationGroup, reference: File)
+
+
+class TsvReader(file: File){
+    val lines = Source.fromFile(file).getLines()
+    val header = lines.next().split("\t")
+    val columns: Map[String, Int] = header.zipWithIndex.toMap
+
+    def getLines = lines.map(l => new TsvRow(l, columns))
+
+}
+class TsvRow(line: String, columns: Map[String, Int]){
+    if( columns.size != cells.length) {
+        throw new IllegalStateException(s"Number of columns in header doesn't match number of cells: ${columns.size}!=${cells.length}")
+    }
+
+    val cells: Array[String] = line.split("\t")
+    def lookup(colName: String): String = {
+        val columnIndex = columns(colName)
+        cells(columnIndex)
+    }
+}
+
+object TumorNormalPair {
+
+    def readPairsFile(file: File):Set[TumorNormalPair] = {
+        val rows = new TsvReader(file).getLines
+        val pairs = rows.map{ row =>
+            new TumorNormalPair(
+                tumor = new File(row.lookup("tumor")),
+                normal = new File(row.lookup("normal")),
+                individual = row.lookup("individual"),
+                cellLine = row.lookup("evaluationGroup") match {
+                    case "HCC1143" => HCC1143
+                    case "HCC1954" => HCC1954
+                    case "NormalNormal" => NormalNormal
+                    case default => throw new Exception(s"$default is not a valid EvaluationGroup")
+                },
+                reference = new File(row.lookup("reference"))
+                )
+
+        }
+
+        pairs.toSet
+
+    }
+}
 
 
 case class MutationCallerInformation(caller: File,name: String, version: String){
@@ -237,7 +281,7 @@ class RunCallersOnKDB extends QScript with Logging{
                       @Input val kdbMaf: File,
                       outputDir: File) extends RscriptCommandLineFunction(script) with Evaluator {
 
-        private val outputPrefix = outputDir + "annotated"
+        private val outputPrefix = outputDir + "/annotated"
 
         @Output(doc="Annotation Summary")
         val summary: File = new File(outputDir,"annotated.summary_kdb.txt")
@@ -246,6 +290,8 @@ class RunCallersOnKDB extends QScript with Logging{
 
         override def getSummaryFile: File = summary
     }
+
+
 }
 
 
