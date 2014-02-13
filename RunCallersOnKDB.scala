@@ -5,6 +5,10 @@ import org.broadinstitute.sting.queue.function.RetryMemoryLimit
 import java.io.File
 import java.util.Calendar
 import java.text.SimpleDateFormat
+import collection.mutable.{ HashMap, MultiMap, Set }
+import org.broadinstitute.sting.queue.util.Logging
+import scala.collection.mutable
+import scala.collection.immutable.Iterable
 
 
 sealed abstract class EvaluationGroup
@@ -33,7 +37,7 @@ class MutationCallerInformation(val caller: File, val name: String, val version:
 
 }
 
-class RunCallersOnKDB extends QScript{
+class RunCallersOnKDB extends QScript with Logging{
     qscript =>
 
     @Input(fullName="mutation_caller", shortName="c", doc="Script to invoke the mutation caller.")
@@ -63,6 +67,7 @@ class RunCallersOnKDB extends QScript{
             "/crsp/qa/picard_aggregation/cancer-exome-val-HCC1954-tn-full-02/12345670186/v1/12345670186.bam",
             "hcc1954-83-86", HCC1954, reference)
     )
+
 
     val cellLines = Map(HCC1143 -> new File("/home/unix/louisb/cga_home/kdb/cga_kdb/mongo/HCC1143_calls.maf"),
                         HCC1954 -> new File("/home/unix/louisb/cga_home/kdb/cga_kdb/mongo/HCC1954_calls.maf"))
@@ -96,22 +101,77 @@ class RunCallersOnKDB extends QScript{
         addAll( mutationCallerCmds )
 
         //Calculate true positives / false positives for each pair
-        val evaluators = mutationCallerCmds map getEvaluator
+        val evaluators = mutationCallerCmds map(m => m.getEvaluator)
         addAll(evaluators)
 
+        //gather results
+        val aggregators: Map[EvaluationGroup, Collector] = aggregateResults(mutationCallerCmds)
+        addAll(aggregators.values)
+
 
 
 
 
     }
 
-    def getEvaluator(caller: MutationCallerInvocation) = {
-        caller.pair.cellLine match {
-            case HCC1143 => new AnnotateKDB(KDB_ANNOTATE_SCRIPT, caller.calls,  cellLines(HCC1143), caller.outputDir)
-            case HCC1954 => new AnnotateKDB(KDB_ANNOTATE_SCRIPT, caller.calls,  cellLines(HCC1954), caller.outputDir)
+
+
+    def aggregateResults(callers: Seq[MutationCallerInvocation]) = {
+        val groups: Map[EvaluationGroup, Seq[MutationCallerInvocation]] =  callers groupBy{
+            case caller => caller.pair.cellLine
+        }
+
+        val collectors: Map[EvaluationGroup, RunCallersOnKDB.this.type#Collector] = groups.mapValues( callers => new Collector( callers.map( c => c.getEvaluator.getSummaryFile)))
+        collectors
+    }
+
+
+
+
+
+
+    class Collector(@Input val evaluationFiles: Seq[File]) extends InProcessFunction{
+
+        override def run(): Unit = {
+            val summaries = evaluationFiles map readEvaluationFile
 
         }
+
+        def readEvaluationFile(evalFile: File): Summary = {
+            import scala.io.Source
+            try{
+                val lines = Source.fromFile(evalFile).getLines()
+                val header = lines.next().split("\t")
+
+                val countAsStrings: Seq[String] = lines.next().split("\t").toSeq
+                val counts = countAsStrings.map(s => s.toInt)
+
+                val nameToValue = (header zip counts).toMap
+                def resultFromLine(postfix: String, m:Map[String,Int]):Result ={
+                    new Result(FP=m("fp"+postfix),
+                               FN=m("fn"+postfix),
+                               Novel=m("novel"+postfix),
+                               TP= m("tp"+postfix))
+                }
+                val snps = resultFromLine("_snps", nameToValue)
+                val indels = resultFromLine("_indels", nameToValue)
+                new Summary(snps=snps, indels=indels)
+
+            } catch {
+                case e: java.io.IOException => logger.error("Couldn't read evaluation file d:", e)
+                                               throw e
+            }
+
+        }
+
     }
+
+
+    class Result(TP: Int,FP: Int, FN: Int, Novel: Int)
+    class Summary(snps: Result, indels: Result){
+
+    }
+
 
 
     class MutationCallerInvocation(val caller: MutationCallerInformation, val pair: TumorNormalPair, basedir: File) extends  CommandLineFunction with RetryMemoryLimit{
@@ -141,6 +201,13 @@ class RunCallersOnKDB extends QScript{
             required(outputDir)
 
 
+        lazy val getEvaluator = {
+            pair.cellLine match {
+                case HCC1143 => new AnnotateKDB(KDB_ANNOTATE_SCRIPT, calls,  cellLines(HCC1143), outputDir)
+                case HCC1954 => new AnnotateKDB(KDB_ANNOTATE_SCRIPT, calls,  cellLines(HCC1954), outputDir)
+
+            }
+        }
     }
 
 
@@ -154,18 +221,30 @@ class RunCallersOnKDB extends QScript{
         def commandLine: String = required("Rscript")  +required(script)+ repeat(args)
     }
 
+    trait Evaluator extends CommandLineFunction{
+        def getSummaryFile: File
+    }
+
+    /**
+     * run the kdb_annotate.R script to generate a summary file of fales positives / negatives
+     * @param script  location of the R script
+     * @param mafToAnnotate the maf to annotate
+     * @param kdbMaf the maf to annotate based on
+     * @param outputDir  the directory to place the outputs in
+     */
     class AnnotateKDB( script: File,
                       @Input val mafToAnnotate: File,
                       @Input val kdbMaf: File,
-                      outputDir: File) extends RscriptCommandLineFunction(script) {
+                      outputDir: File) extends RscriptCommandLineFunction(script) with Evaluator {
 
-        val outputPrefix = outputDir + "/annotated"
+        private val outputPrefix = outputDir + "annotated"
 
         @Output(doc="Annotation Summary")
-        val summary: File = new File(outputPrefix,".summary_kdb.txt")
+        val summary: File = new File(outputDir,"annotated.summary_kdb.txt")
 
         args = List(mafToAnnotate, kdbMaf, outputPrefix, "WEX")
 
+        override def getSummaryFile: File = summary
     }
 }
 
