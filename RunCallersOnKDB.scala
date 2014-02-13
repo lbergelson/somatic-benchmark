@@ -22,11 +22,11 @@ case object NormalNormal extends EvaluationGroup
 case class TumorNormalPair(tumor: File, normal: File, individual: String, cellLine: EvaluationGroup, reference: File)
 
 
-class MutationCallerInformation(val caller: File, val name: String, val version: String){
+case class MutationCallerInformation(caller: File,name: String, version: String){
 
     def getTimeStamp = {
         val time = Calendar.getInstance.getTime
-        val dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss")
+        val dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
         dateFormat.format(time)
     }
 
@@ -57,7 +57,7 @@ class RunCallersOnKDB extends QScript with Logging{
     val TOOL_DIR = new File(LIB_DIR, "tool-scripts")
     val OUTPUT_DIR = new File("/cga/tcga-gsc/benchmark/data/evaluation/")
 
-    val KDB_ANNOTATE_SCRIPT = new File(LIB_DIR, "kdb_annotate.R")
+    val KDB_ANNOTATE_SCRIPT = new File("/xchip/cga_home/louisb/kdb/cga_kdb/firehose/kdb_annotate.R")
 
 
     val pairs = Seq( new TumorNormalPair("/crsp/qa/picard_aggregation/cancer-exome-val-HCC1143-tn-full-07/12345670177/v1/12345670177.bam",
@@ -188,7 +188,7 @@ class RunCallersOnKDB extends QScript with Logging{
         val reference: File = pair.reference
 
         @Output(doc="output directory")
-        val outputDir: File = new File(basedir, caller.identifierString)
+        val outputDir: File = new File(basedir, caller.identifierString+pair.hashCode())
 
         @Output(doc="maf file of all calls, set to be outputDir/final_calls.maf")
         val calls: File = new File(outputDir, "final_calls.maf")
