@@ -309,6 +309,17 @@ class RunCallersOnKDB extends QScript with Logging{
         def getSummaryFile: File
     }
 
+
+    class CountFP(script:File, @Input nnMaf: File, outputDir: File) extends RscriptCommandLineFunction(script) with Evaluator{
+        @Output(doc="Annotation Summary")
+        val summary: File = new File(outputDir,"nn.summary_kdb.txt")
+
+        args= List(nnMaf, summary)
+
+        override def getSummaryFile: File = summary
+
+    }
+
     /**
      * run the kdb_annotate.R script to generate a summary file of fales positives / negatives
      * @param script  location of the R script
