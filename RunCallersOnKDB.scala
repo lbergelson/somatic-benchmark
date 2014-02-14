@@ -151,47 +151,46 @@ class RunCallersOnKDB extends QScript with Logging{
         val evaluators = mutationCallerCmds map(m => m.getEvaluator)
         addAll(evaluators)
 
-        //gather results
-        val aggregators: Map[EvaluationGroup, Collector] = aggregateResults(mutationCallerCmds)
-        addAll(aggregators.values)
 
         //print summary
-        val writeResults = new WriteOutResults(mutCaller, aggregators, new File("final.results.txt"))
+        val writeResults = new WriteOutResults(mutationCallerCmds, new File("final.results.txt"))
         add(writeResults)
 
     }
 
 
 
-    def aggregateResults(callers: Traversable[MutationCallerInvocation]) = {
-        val groups: Map[EvaluationGroup, Traversable[MutationCallerInvocation]] =  callers groupBy{
-            case caller => caller.pair.cellLine
+
+
+
+
+
+    class WriteOutResults(mutCallers: Traversable[MutationCallerInvocation], @Output resultsFile: File) extends InProcessFunction {
+        @Input
+        val inputFiles: Seq[File] =  mutCallers.map( c => c.getEvaluator.getSummaryFile).toSeq
+
+
+        val aggregators = aggregateResults(mutCallers)
+
+
+        def aggregateResults(callers: Traversable[MutationCallerInvocation]) = {
+            val groups: Map[EvaluationGroup, Traversable[MutationCallerInvocation]] =  callers groupBy{
+                case mutCaller => mutCaller.pair.cellLine
+            }
+
+            val collectors: Traversable[Collector] = groups.map{ case (evalGroup, groupedCallers) => new Collector(evalGroup, groupedCallers.toSeq)}
+            collectors
         }
 
-        val collectors: Map[EvaluationGroup, Collector] = groups.mapValues( callers => new Collector( callers.map( c => c.getEvaluator.getSummaryFile).toSeq))
-        collectors
-    }
-
-
-
-
-    class WriteOutResults(mutCaller: MutationCallerInformation, aggregators: Map[EvaluationGroup, Collector], @Output resultsFile: File) extends InProcessFunction {
-        @Input
-        val inputFiles: Seq[File] = aggregators.values.map( c => c.output).toSeq
-
         override def run(): Unit =  {
+            val aggregators = aggregateResults(mutCallers)
+
             val bw = new BufferedWriter(new FileWriter(resultsFile) )
+
 
             bw.write(s"${Summary.headerString}\tEvaluationGroup\tCaller\tVersion\tTime\n")
 
-            aggregators.foreach{
-                case (group, collector) =>
-
-                    collector.collectionResults.foreach{ sum =>
-                        bw.write(s"${sum.toString}\t$group\t${mutCaller.name}\t${mutCaller.version}\t${mutCaller.timeStamp}\n")
-                    }
-
-            }
+            aggregators.foreach( (collector) => bw.write(collector.resultsToString) )
 
             bw.close()
         }
@@ -199,15 +198,20 @@ class RunCallersOnKDB extends QScript with Logging{
 
 
 
-    class Collector(@Input val evaluationFiles: Seq[File]) extends InProcessFunction{
-        @Output
-        val output = File.createTempFile("collectorOutput",".tmp")
+    class Collector( val evalGroup: EvaluationGroup, val mutCallerGroup:Seq[MutationCallerInvocation]){
 
-        var collectionResults:Seq[Summary] = Nil
+        val evaluationFiles: Seq[File] = mutCallerGroup.map(mg => mg.getEvaluator.getSummaryFile).toSeq
 
-        override def run(): Unit = {
-            collectionResults = evaluationFiles map readEvaluationFile
+        val collectionResults:Seq[Summary] = evaluationFiles map readEvaluationFile
 
+        val resultsToString: String = {
+            val resultPairs = (collectionResults, mutCallerGroup).zipped
+            val lines = resultPairs.map{ case(summary, mutCaller) =>
+                val callerInfo = mutCaller.caller
+                //s"${Summary.headerString}\tEvaluationGroup\tCaller\tVersion\tTime\n")
+                s"$summary\t$evalGroup\t${callerInfo.name}\t${callerInfo.version}\t${callerInfo.timeStamp}\n"
+            }
+            lines.mkString("")
 
         }
 
@@ -227,6 +231,7 @@ class RunCallersOnKDB extends QScript with Logging{
                                Novel=m("novel"+postfix),
                                TP= m("tp"+postfix))
                 }
+
                 val snps = resultFromLine("_snp", nameToValue)
                 val indels = resultFromLine("_indel", nameToValue)
                 new Summary(snps=snps, indels=indels)
@@ -235,20 +240,19 @@ class RunCallersOnKDB extends QScript with Logging{
                 case e: java.io.IOException => logger.error("Couldn't read evaluation file d:", e)
                                                throw e
             }
-
         }
 
     }
 
 
     class Result(TP: Int,FP: Int, FN: Int, Novel: Int){
-        override def toString() = s"$TP\t$FP\t$FN\t$Novel"
+        override def toString = s"$TP\t$FP\t$FN\t$Novel"
     }
     object Result{
         def headerString(postfix: String) = s"tp_$postfix\tfp_$postfix\tfn_$postfix\tnovel_$postfix"
     }
     class Summary(snps: Result, indels: Result){
-        override def toString() = s"${snps.toString()}\t${indels.toString()}"
+        override def toString = s"${snps.toString()}\t${indels.toString()}"
 
     }
     object Summary{
