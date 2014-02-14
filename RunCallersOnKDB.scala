@@ -155,7 +155,7 @@ class RunCallersOnKDB extends QScript with Logging{
 
 
         //print summary
-        val evalFiles: Seq[File] = evaluators.map(e => e.summary).toSeq
+        val evalFiles: Seq[File] = evaluators.map(e => e.getSummaryFile).toSeq
         logger.info(s"Evaluations produced ${evalFiles.length} files.")
         logger.info(s"Evaluation files are ${evalFiles.map(f => f.toString)}")
         val writeResults = new WriteOutResults(evalFiles, mutationCallerCmds, new File("final.results.txt"))
@@ -345,7 +345,7 @@ class RunCallersOnKDB extends QScript with Logging{
         @Output(doc="Annotation Summary")
         val summary: File = new File(outputDir,"annotated.summary_kdb.txt")
 
-        args = List(mafToAnnotate, kdbMaf, outputPrefix, "WEX")
+        args = List(mafToAnnotate, kdbMaf, outputPrefix)
 
         override def getSummaryFile: File = summary
     }
