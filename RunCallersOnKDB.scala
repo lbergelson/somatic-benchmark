@@ -153,7 +153,9 @@ class RunCallersOnKDB extends QScript with Logging{
 
 
         //print summary
-        val writeResults = new WriteOutResults(evaluators.map(e => e.summary), mutationCallerCmds, new File("final.results.txt"))
+        val evalFiles: Seq[File] = evaluators.map(e => e.summary).toSeq
+        logger.info(s"Evaluations produced ${evalFiles.length} files.")
+        val writeResults = new WriteOutResults(evaluators.map(e => e.summary).toSeq, mutationCallerCmds, new File("final.results.txt"))
         add(writeResults)
 
     }
@@ -167,17 +169,7 @@ class RunCallersOnKDB extends QScript with Logging{
 
     class WriteOutResults(@Input evaluationSummaries: Seq[File], mutCallers: Traversable[MutationCallerInvocation], @Output resultsFile: File) extends InProcessFunction {
 
-        val aggregators = aggregateResults(mutCallers)
 
-
-        def aggregateResults(callers: Traversable[MutationCallerInvocation]) = {
-            val groups: Map[EvaluationGroup, Traversable[MutationCallerInvocation]] =  callers groupBy{
-                case mutCaller => mutCaller.pair.cellLine
-            }
-
-            val collectors: Traversable[Collector] = groups.map{ case (evalGroup, groupedCallers) => new Collector(evalGroup, groupedCallers.toSeq)}
-            collectors
-        }
 
         override def run(): Unit =  {
             val aggregators = aggregateResults(mutCallers)
@@ -190,6 +182,15 @@ class RunCallersOnKDB extends QScript with Logging{
             aggregators.foreach( (collector) => bw.write(collector.resultsToString) )
 
             bw.close()
+
+            def aggregateResults(callers: Traversable[MutationCallerInvocation]) = {
+                val groups: Map[EvaluationGroup, Traversable[MutationCallerInvocation]] =  callers groupBy{
+                    case mutCaller => mutCaller.pair.cellLine
+                }
+
+                val collectors: Traversable[Collector] = groups.map{ case (evalGroup, groupedCallers) => new Collector(evalGroup, groupedCallers.toSeq)}
+                collectors
+            }
         }
     }
 
@@ -234,7 +235,7 @@ class RunCallersOnKDB extends QScript with Logging{
                 new Summary(snps=snps, indels=indels)
 
             } catch {
-                case e: java.io.IOException => logger.error("Couldn't read evaluation file d:", e)
+                case e: java.io.IOException => logger.error("Couldn't read evaluation file:", e)
                                                throw e
             }
         }
