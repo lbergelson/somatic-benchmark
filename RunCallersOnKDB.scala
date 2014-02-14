@@ -153,7 +153,7 @@ class RunCallersOnKDB extends QScript with Logging{
 
 
         //print summary
-        val writeResults = new WriteOutResults(mutationCallerCmds, new File("final.results.txt"))
+        val writeResults = new WriteOutResults(evaluators.map(e => e.summary), mutationCallerCmds, new File("final.results.txt"))
         add(writeResults)
 
     }
@@ -165,10 +165,7 @@ class RunCallersOnKDB extends QScript with Logging{
 
 
 
-    class WriteOutResults(mutCallers: Traversable[MutationCallerInvocation], @Output resultsFile: File) extends InProcessFunction {
-        @Input
-        val inputFiles: Seq[File] =  mutCallers.map( c => c.getEvaluator.getSummaryFile).toSeq
-
+    class WriteOutResults(@Input evaluationSummaries: Seq[File], mutCallers: Traversable[MutationCallerInvocation], @Output resultsFile: File) extends InProcessFunction {
 
         val aggregators = aggregateResults(mutCallers)
 
