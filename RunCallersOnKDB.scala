@@ -110,6 +110,7 @@ class RunCallersOnKDB extends QScript with Logging{
     val OUTPUT_DIR = new File("/cga/tcga-gsc/benchmark/data/evaluation/")
 
     val KDB_ANNOTATE_SCRIPT = new File("kdb_annotate.R")
+    val COUNT_FP_SCRIPT = new File("countFP.R")
 
 
     val test_pairs = Seq( new TumorNormalPair("/crsp/qa/picard_aggregation/cancer-exome-val-HCC1143-tn-full-07/12345670177/v1/12345670177.bam",
@@ -172,6 +173,7 @@ class RunCallersOnKDB extends QScript with Logging{
     class WriteOutResults(evaluationSummaries: Seq[File], mutCallers: Traversable[MutationCallerInvocation], @Output resultsFile: File) extends InProcessFunction {
 		@Input
 		val inputFiles: List[File] = evaluationSummaries.toList
+
         def aggregateResults(callers: Traversable[MutationCallerInvocation]) = {
             val groups: Map[EvaluationGroup, Traversable[MutationCallerInvocation]] =  callers groupBy{
                 case mutCaller => mutCaller.pair.cellLine
@@ -282,6 +284,7 @@ class RunCallersOnKDB extends QScript with Logging{
         @Output(doc="maf file of all calls, set to be outputDir/final_calls.maf")
         val calls: File = new File(outputDir, "final_calls.maf")
 
+        memoryLimit = 4
 
         def commandLine = required(tool)+
             required(normal)+
@@ -294,7 +297,7 @@ class RunCallersOnKDB extends QScript with Logging{
             pair.cellLine match {
                 case HCC1143 => new AnnotateKDB(KDB_ANNOTATE_SCRIPT, calls,  cellLines(HCC1143), outputDir)
                 case HCC1954 => new AnnotateKDB(KDB_ANNOTATE_SCRIPT, calls,  cellLines(HCC1954), outputDir)
-
+                case NormalNormal => new CountFP(COUNT_FP_SCRIPT, calls, outputDir)
             }
         }
     }
