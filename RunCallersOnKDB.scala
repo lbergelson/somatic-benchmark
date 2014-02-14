@@ -1,5 +1,6 @@
 package org.broadinstitute.cga.benchmark.queue
 
+
 import org.broadinstitute.sting.queue.QScript
 import org.broadinstitute.sting.queue.function.RetryMemoryLimit
 import java.io.{FileWriter, BufferedWriter, File}
@@ -155,7 +156,8 @@ class RunCallersOnKDB extends QScript with Logging{
         //print summary
         val evalFiles: Seq[File] = evaluators.map(e => e.summary).toSeq
         logger.info(s"Evaluations produced ${evalFiles.length} files.")
-        val writeResults = new WriteOutResults(evaluators.map(e => e.summary).toSeq, mutationCallerCmds, new File("final.results.txt"))
+        logger.info(s"Evaluation files are ${evalFiles.map(f => f.toString)}")
+        val writeResults = new WriteOutResults(evalFiles, mutationCallerCmds, new File("final.results.txt"))
         add(writeResults)
 
     }
@@ -167,9 +169,17 @@ class RunCallersOnKDB extends QScript with Logging{
 
 
 
-    class WriteOutResults(@Input evaluationSummaries: Seq[File], mutCallers: Traversable[MutationCallerInvocation], @Output resultsFile: File) extends InProcessFunction {
+    class WriteOutResults(evaluationSummaries: Seq[File], mutCallers: Traversable[MutationCallerInvocation], @Output resultsFile: File) extends InProcessFunction {
+		@Input
+		val inputFiles: List[File] = evaluationSummaries.toList
+        def aggregateResults(callers: Traversable[MutationCallerInvocation]) = {
+            val groups: Map[EvaluationGroup, Traversable[MutationCallerInvocation]] =  callers groupBy{
+                case mutCaller => mutCaller.pair.cellLine
+            }
 
-
+            val collectors: Traversable[Collector] = groups.map{ case (evalGroup, groupedCallers) => new Collector(evalGroup, groupedCallers.toSeq)}
+            collectors
+		} 
 
         override def run(): Unit =  {
             val aggregators = aggregateResults(mutCallers)
@@ -183,15 +193,8 @@ class RunCallersOnKDB extends QScript with Logging{
 
             bw.close()
 
-            def aggregateResults(callers: Traversable[MutationCallerInvocation]) = {
-                val groups: Map[EvaluationGroup, Traversable[MutationCallerInvocation]] =  callers groupBy{
-                    case mutCaller => mutCaller.pair.cellLine
-                }
-
-                val collectors: Traversable[Collector] = groups.map{ case (evalGroup, groupedCallers) => new Collector(evalGroup, groupedCallers.toSeq)}
-                collectors
-            }
         }
+        
     }
 
 
