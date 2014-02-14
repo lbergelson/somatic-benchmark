@@ -82,7 +82,7 @@ case class MutationCallerInformation(caller: File,name: String, version: String)
 
     val timeStamp = getTimeStamp
 
-    val identifierString = s"$name-$version"
+    val identifierString = s"$name-$version-$timeStamp"
 
 
 }
@@ -158,7 +158,7 @@ class RunCallersOnKDB extends QScript with Logging{
         val evalFiles: Seq[File] = evaluators.map(e => e.getSummaryFile).toSeq
         logger.info(s"Evaluations produced ${evalFiles.length} files.")
         logger.info(s"Evaluation files are ${evalFiles.map(f => f.toString)}")
-        val writeResults = new WriteOutResults(evalFiles, mutationCallerCmds, new File("final.results.txt"))
+        val writeResults = new WriteOutResults(evalFiles, mutationCallerCmds, new File(s"${mutCaller.identifierString}.final.results.txt"))
         add(writeResults)
 
     }
@@ -318,7 +318,7 @@ class RunCallersOnKDB extends QScript with Logging{
     }
 
 
-    class CountFP(script:File, @Input nnMaf: File, outputDir: File) extends RscriptCommandLineFunction(script) with Evaluator{
+    class CountFP(script:File, @Input val nnMaf: File, outputDir: File) extends RscriptCommandLineFunction(script) with Evaluator{
         @Output(doc="Annotation Summary")
         val summary: File = new File(outputDir,"nn.summary_kdb.txt")
 
