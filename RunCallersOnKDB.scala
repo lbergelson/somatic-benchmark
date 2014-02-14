@@ -2,11 +2,12 @@ package org.broadinstitute.cga.benchmark.queue
 
 import org.broadinstitute.sting.queue.QScript
 import org.broadinstitute.sting.queue.function.RetryMemoryLimit
-import java.io.File
+import java.io.{FileWriter, BufferedWriter, File}
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import org.broadinstitute.sting.queue.util.Logging
 import scala.io.Source
+import org.broadinstitute.sting.commandline
 
 
 sealed abstract class EvaluationGroup
@@ -72,7 +73,7 @@ object TumorNormalPair extends Logging{
 
 case class MutationCallerInformation(caller: File,name: String, version: String){
 
-    def getTimeStamp = {
+    private def getTimeStamp = {
         val time = Calendar.getInstance.getTime
         val dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
         dateFormat.format(time)
@@ -154,6 +155,10 @@ class RunCallersOnKDB extends QScript with Logging{
         val aggregators: Map[EvaluationGroup, Collector] = aggregateResults(mutationCallerCmds)
         addAll(aggregators.values)
 
+        //print summary
+        val writeResults = new WriteOutResults(mutCaller, aggregators, new File("final.results.txt"))
+        add(writeResults)
+
     }
 
 
@@ -170,12 +175,39 @@ class RunCallersOnKDB extends QScript with Logging{
 
 
 
+    class WriteOutResults(mutCaller: MutationCallerInformation, aggregators: Map[EvaluationGroup, Collector], @Output resultsFile: File) extends InProcessFunction {
+        @Input
+        val inputFiles: Seq[File] = aggregators.values.map( c => c.output).toSeq
+
+        override def run(): Unit =  {
+            val bw = new BufferedWriter(new FileWriter(resultsFile) )
+
+            bw.write(s"${Summary.headerString}\tEvaluationGroup\tCaller\tVersion\tTime\n")
+
+            aggregators.foreach{
+                case (group, collector) =>
+
+                    collector.collectionResults.foreach{ sum =>
+                        bw.write(s"${sum.toString}\t$group\t${mutCaller.name}\t${mutCaller.version}\t${mutCaller.timeStamp}\n")
+                    }
+
+            }
+
+            bw.close()
+        }
+    }
+
 
 
     class Collector(@Input val evaluationFiles: Seq[File]) extends InProcessFunction{
+        @Output
+        val output = File.createTempFile("collectorOutput",".tmp")
+
+        var collectionResults:Seq[Summary] = Nil
 
         override def run(): Unit = {
-            val summaries = evaluationFiles map readEvaluationFile
+            collectionResults = evaluationFiles map readEvaluationFile
+
 
         }
 
@@ -209,8 +241,18 @@ class RunCallersOnKDB extends QScript with Logging{
     }
 
 
-    class Result(TP: Int,FP: Int, FN: Int, Novel: Int)
+    class Result(TP: Int,FP: Int, FN: Int, Novel: Int){
+        override def toString() = s"$TP\t$FP\t$FN\t$Novel"
+    }
+    object Result{
+        def headerString(postfix: String) = s"tp_$postfix\tfp_$postfix\tfn_$postfix\tnovel_$postfix"
+    }
     class Summary(snps: Result, indels: Result){
+        override def toString() = s"${snps.toString()}\t${indels.toString()}"
+
+    }
+    object Summary{
+        val headerString = s"${Result.headerString("snp")}\t${Result.headerString("indel")}"
 
     }
 
