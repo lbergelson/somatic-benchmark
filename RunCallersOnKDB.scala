@@ -20,31 +20,38 @@ case object NormalNormal extends EvaluationGroup
 case class TumorNormalPair(tumor: File, normal: File, individual: String, cellLine: EvaluationGroup, reference: File)
 
 
-class TsvReader(file: File){
+class TsvReader(file: File) extends Logging{
     val lines = Source.fromFile(file).getLines()
+
+
     val header = lines.next().split("\t")
     val columns: Map[String, Int] = header.zipWithIndex.toMap
-
-    def getLines = lines.map(l => new TsvRow(l, columns))
+    logger.debug(s"Header:${header.toString}")
+    logger.debug(s"Columns:${columns.toString}")
+    def getLines: Iterator[TsvRow] = lines.map{l => new TsvRow(l, columns)}
 
 }
-class TsvRow(line: String, columns: Map[String, Int]){
+class TsvRow(line: String, columns: Map[String, Int]) extends Logging{
+    val cells: Array[String] = line.split("\t")
+
     if( columns.size != cells.length) {
         throw new IllegalStateException(s"Number of columns in header doesn't match number of cells: ${columns.size}!=${cells.length}")
     }
 
-    val cells: Array[String] = line.split("\t")
+
+    logger.debug(s"New TsvRow:\n line:$line \n cells:$cells")
     def lookup(colName: String): String = {
         val columnIndex = columns(colName)
         cells(columnIndex)
     }
 }
 
-object TumorNormalPair {
+object TumorNormalPair extends Logging{
 
     def readPairsFile(file: File):Set[TumorNormalPair] = {
         val rows = new TsvReader(file).getLines
         val pairs = rows.map{ row =>
+            logger.debug(s"loading row: $row")
             new TumorNormalPair(
                 tumor = new File(row.lookup("tumor")),
                 normal = new File(row.lookup("normal")),
@@ -57,11 +64,8 @@ object TumorNormalPair {
                 },
                 reference = new File(row.lookup("reference"))
                 )
-
         }
-
-        pairs.toSet
-
+		pairs.toSet
     }
 }
 
@@ -76,7 +80,7 @@ case class MutationCallerInformation(caller: File,name: String, version: String)
 
     val timeStamp = getTimeStamp
 
-    val identifierString = s"$name-$version-$timeStamp"
+    val identifierString = s"$name-$version"
 
 
 }
@@ -94,6 +98,8 @@ class RunCallersOnKDB extends QScript with Logging{
     var version: String = _
 
 
+	@Argument(fullName="pairs", shortName="p", doc="File listing pairs to run on", required=false)
+	var pairs_file: File = new File("testpairs.txt")
 
     val reference: File = "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta"
 
@@ -104,13 +110,10 @@ class RunCallersOnKDB extends QScript with Logging{
     val KDB_ANNOTATE_SCRIPT = new File("kdb_annotate.R")
 
 
-    val pairs = Seq( new TumorNormalPair("/crsp/qa/picard_aggregation/cancer-exome-val-HCC1143-tn-full-07/12345670177/v1/12345670177.bam",
+    val test_pairs = Seq( new TumorNormalPair("/crsp/qa/picard_aggregation/cancer-exome-val-HCC1143-tn-full-07/12345670177/v1/12345670177.bam",
         "/crsp/qa/picard_aggregation/cancer-exome-val-HCC1143-tn-full-02/12345670180/v1/12345670180.bam",
-        "hcc1143-77-80", HCC1143, reference),
-        new TumorNormalPair("/crsp/qa/picard_aggregation/cancer-exome-val-HCC1954-tn-full-09/12345670183/v1/12345670183.bam",
-            "/crsp/qa/picard_aggregation/cancer-exome-val-HCC1954-tn-full-02/12345670186/v1/12345670186.bam",
-            "hcc1954-83-86", HCC1954, reference)
-    )
+        "hcc1143-77-80", HCC1143, reference)
+         )
 
 
     val cellLines = Map(HCC1143 -> new File("/home/unix/louisb/cga_home/kdb/cga_kdb/mongo/HCC1143_calls.maf"),
@@ -120,9 +123,8 @@ class RunCallersOnKDB extends QScript with Logging{
      * Builds the CommandLineFunctions that will be used to run this script and adds them to this.functions directly or using the add() utility method.
      */
     def script(): Unit = {
-
-
-
+		val pairs = TumorNormalPair.readPairsFile(pairs_file)
+        logger.info(s"Loaded ${pairs.size} pairs.")
         /*
          * 1 run caller on all cell line data sets
          * 2 evaluate each result against the appropriate kdb entry
@@ -152,20 +154,16 @@ class RunCallersOnKDB extends QScript with Logging{
         val aggregators: Map[EvaluationGroup, Collector] = aggregateResults(mutationCallerCmds)
         addAll(aggregators.values)
 
-
-
-
-
     }
 
 
 
-    def aggregateResults(callers: Seq[MutationCallerInvocation]) = {
-        val groups: Map[EvaluationGroup, Seq[MutationCallerInvocation]] =  callers groupBy{
+    def aggregateResults(callers: Traversable[MutationCallerInvocation]) = {
+        val groups: Map[EvaluationGroup, Traversable[MutationCallerInvocation]] =  callers groupBy{
             case caller => caller.pair.cellLine
         }
 
-        val collectors: Map[EvaluationGroup, RunCallersOnKDB.this.type#Collector] = groups.mapValues( callers => new Collector( callers.map( c => c.getEvaluator.getSummaryFile)))
+        val collectors: Map[EvaluationGroup, Collector] = groups.mapValues( callers => new Collector( callers.map( c => c.getEvaluator.getSummaryFile).toSeq))
         collectors
     }
 
@@ -197,8 +195,8 @@ class RunCallersOnKDB extends QScript with Logging{
                                Novel=m("novel"+postfix),
                                TP= m("tp"+postfix))
                 }
-                val snps = resultFromLine("_snps", nameToValue)
-                val indels = resultFromLine("_indels", nameToValue)
+                val snps = resultFromLine("_snp", nameToValue)
+                val indels = resultFromLine("_indel", nameToValue)
                 new Summary(snps=snps, indels=indels)
 
             } catch {

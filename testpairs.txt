@@ -1,0 +1,2 @@
+tumor	normal	individual	evaluationGroup	reference
+/crsp/qa/picard_aggregation/cancer-exome-val-HCC1143-tn-full-07/12345670177/v1/12345670177.bam	/crsp/qa/picard_aggregation/cancer-exome-val-HCC1143-tn-full-02/12345670180/v1/12345670180.bam	hcc1143-77-80	HCC1143	/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
