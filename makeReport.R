@@ -9,15 +9,34 @@ stats_file = args[1]
 
 stats <- read.delim(stats_file)
 
+precision <- function(tp, fp){
+	precision <- tp / (tp + fp)
+	return(precision)
+}
+
+recall <- function(tp,fn){
+	recall <- tp / (tp + fn)
+	return(recall)
+}
+
+f1 <- function(precision, recall){
+	f1 <- 2 * (precision * recall) / (precision + recall)
+	f1
+}
+
 stats_summary <- ddply(stats, .(EvaluationGroup, Caller,Version,Time),
 	 function(df) c(fp_snp = mean(df$fp_snp), tp_snp = mean(df$tp_snp), fn_snp = mean(df$fn_snp), novel_snp = mean(df$novel_snp),
 		fp_indel = mean(df$fp_indel), tp_indel = mean(df$tp_indel), fn_indel = mean(df$fn_indel), novel_indel = mean(df$novel_indel) ))
-stats_summary <- mutate(stats_summary, sensitivity_snp = tp_snp/(fp_snp+tp_snp))
-stats_summary <- mutate(stats_summary, sensitivity_indel = tp_indel/(fp_indel+tp_indel))
 
-stats_summary <- mutate(stats_summary, specificity_snp = tp_snp/(fp_snp+tp_snp))
-stats_summary <- mutate(stats_summary, specificity_indel = tp_indel/(fp_indel+tp_indel))
+stats_summary <- mutate(stats_summary, precision_snp = precision(tp_snp, fp_snp))
+stats_summary <- mutate(stats_summary, precision_indel = precision(tp_indel, fp_indel))
 
+stats_summary <- mutate(stats_summary, recall_snp = recall(tp_snp, fn_snp))
+stats_summary <- mutate(stats_summary, recall_indel = recall(tp_indel, fn_indel))
+
+
+stats_summary <- mutate(stats_summary, f1_snp = f1(precision_snp, recall_snp))
+stats_summary <- mutate(stats_summary, f1_indel = f1(precision_indel, recall_indel))
 
 
 
@@ -29,8 +48,8 @@ normalNormal <- newSection( "NormalNormal");
 completeData <- newSection( "Complete");
 
 common_cols <- c("Caller", "Version", "Time")
-snp_cols = c(common_cols,c("tp_snp","fp_snp","fn_snp","novel_snp","sensitivity_snp","specificity_snp"))
-indel_cols = c(common_cols, c("tp_indel","fp_indel","fn_indel","novel_indel","sensitivity_indel","sensitivity_indel"))
+snp_cols = c(common_cols,c("tp_snp","fp_snp","fn_snp","novel_snp","precision_snp","recall_snp","f1_snp"))
+indel_cols = c(common_cols, c("tp_indel","fp_indel","fn_indel","novel_indel","precision_indel","recall_indel","f1_indel"))
 print(snp_cols)
 print(indel_cols)
 
