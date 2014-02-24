@@ -2,13 +2,12 @@ package org.broadinstitute.cga.benchmark.queue
 
 
 import org.broadinstitute.sting.queue.QScript
-import org.broadinstitute.sting.queue.function.RetryMemoryLimit
+import org.broadinstitute.sting.queue.function.RetryMemoryLimit                                         c
 import java.io.{FileWriter, BufferedWriter, File}
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import org.broadinstitute.sting.queue.util.Logging
 import scala.io.Source
-import org.broadinstitute.sting.commandline
 
 
 sealed abstract class EvaluationGroup
@@ -29,7 +28,7 @@ class TsvReader(file: File) extends Logging{
     val header = lines.next().split("\t")
     val columns: Map[String, Int] = header.zipWithIndex.toMap
     logger.debug(s"Header:${header.toString}")
-    logger.debug(s"Columns:${columns.toString}")
+    logger.debug(s"Columns:${columns.toString()}")
     def getLines: Iterator[TsvRow] = lines.map{l => new TsvRow(l, columns)}
 
 }
@@ -329,7 +328,7 @@ class RunCallersOnKDB extends QScript with Logging{
     }
 
     /**
-     * run the kdb_annotate.R script to generate a summary file of fales positives / negatives
+     * run the kdb_annotate.R script to generate a summary file of false positives / negatives
      * @param script  location of the R script
      * @param mafToAnnotate the maf to annotate
      * @param kdbMaf the maf to annotate based on
