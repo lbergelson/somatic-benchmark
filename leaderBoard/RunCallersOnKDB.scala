@@ -2,7 +2,7 @@ package org.broadinstitute.cga.benchmark.queue
 
 
 import org.broadinstitute.sting.queue.QScript
-import org.broadinstitute.sting.queue.function.RetryMemoryLimit                                         c
+import org.broadinstitute.sting.queue.function.RetryMemoryLimit
 import java.io.{FileWriter, BufferedWriter, File}
 import java.util.Calendar
 import java.text.SimpleDateFormat
