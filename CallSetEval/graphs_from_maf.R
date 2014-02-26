@@ -195,10 +195,10 @@ draw_graphs <- function(basedir, subdir, maf){
         shared_graphs(snps_only, outputdir,paste0(subdir,"_snps")) 
         
         if("i_t_lod_fstar" %in% colnames(snps_only)){
-            qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+theme_bw()
+            qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+scale_x_log10()+theme_bw()
             save_with_name("snp_lod_score")
 
-            ggplot(maf, aes(x=Tumor_Depth, y= i_t_lod_fstar)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
+            ggplot(maf, aes(x=Tumor_Depth, y= i_t_lod_fstar)) +stat_binhex(bins=100)+scale_y_log10()+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
             save_with_name("snp_lod_score_vs_tumor_depth")    
         } else {
             print("no lod score in maf")
