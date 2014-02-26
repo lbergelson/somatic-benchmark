@@ -81,7 +81,7 @@ case class MutationCallerInformation(caller: File,name: String, version: String)
 
     val timeStamp = getTimeStamp
 
-    val identifierString = s"$name-$version-$timeStamp"
+    val identifierString = s"$name-$version"
 
 
 }
@@ -105,7 +105,7 @@ class RunCallersOnKDB extends QScript with Logging{
     val reference: File = "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta"
 
     val LIB_DIR = new File(".")
-    val TOOL_DIR = new File(LIB_DIR, "tool-scripts")
+    val TOOL_DIR = new File(LIB_DIR, "../tool-scripts")
     val OUTPUT_DIR = new File("/cga/tcga-gsc/benchmark/data/evaluation/")
 
     val KDB_ANNOTATE_SCRIPT = new File("kdb_annotate.R")
@@ -197,6 +197,8 @@ class RunCallersOnKDB extends QScript with Logging{
         }
         
     }
+
+
 
 
 

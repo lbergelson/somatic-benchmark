@@ -18,6 +18,9 @@ maf <- read.delim(file)
 snps = getSnps(maf)
 indels = getIndels(maf)
 
+coding <-   c("Missense_Mutation", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "Nonsense_Mutation", "Splice_Site", "Silent")
+snps <- snps[snps$Variant_Classification %in% coding,]
+indels <- indels[indels$Variant_Classification %in% coding,]
 
 summary_table = NULL
 summary_table$tp_snp = 0
