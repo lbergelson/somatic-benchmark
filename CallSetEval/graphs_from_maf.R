@@ -142,10 +142,16 @@ bind_save_function <- function(outputdir, prefix){
 #takes a maf data frame as input, returns a log10 scaled x axis with ticks appropriate to the maf's tumor depth
 ##############
 scale_x_tumor_depth <- function(maf) {
-      potential_breaks <- c(5,10,20,30,40,50,60,100,150,200,300,500,1000,2000,3000,5000,10000) 
-      breaks_to_use <- potential_breaks[potential_breaks <= max(maf$Tumor_Depth)]
-      return(scale_x_log10(breaks=breaks_to_use, minor_breaks<-c()))
+      breaks_to_use <- log_breaks(max(maf$Tumor_Depth))
+      return(scale_x_log10(breaks=breaks_to_use, minor_breaks=c()))
 }
+
+log_breaks <- function(max){
+    potential_breaks <- unique(c(seq(0,10),seq(10,100,10), seq(100,1000,100), seq(1000,10000,10000)))
+    return( potential_breaks[potential_breaks <= max])
+}
+
+
 
 #graphs that make sense for snps and indels together or apart
 shared_graphs <- function(maf, outputdir, prefix){
@@ -195,10 +201,10 @@ draw_graphs <- function(basedir, subdir, maf){
         shared_graphs(snps_only, outputdir,paste0(subdir,"_snps")) 
         
         if("i_t_lod_fstar" %in% colnames(snps_only)){
-            qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+scale_x_log10()+theme_bw()
+            qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+scale_x_log10(breaks=log_breaks(max(snps_only$i_t_lod_fstar)), minor_breaks=c())+theme_bw()
             save_with_name("snp_lod_score")
 
-            ggplot(maf, aes(x=Tumor_Depth, y= i_t_lod_fstar)) +stat_binhex(bins=100)+scale_y_log10()+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
+            ggplot(snps_only, aes(x=Tumor_Depth, y= i_t_lod_fstar)) +stat_binhex(bins=100)+scale_y_log10(breaks=log_breaks(max(snps_only$i_t_lod_fstar)), minor_breaks=c())+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
             save_with_name("snp_lod_score_vs_tumor_depth")    
         } else {
             print("no lod score in maf")
