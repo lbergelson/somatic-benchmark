@@ -129,17 +129,8 @@ class RunCallersOnKDB extends QScript with Logging{
         logger.info(s"Loaded ${pairs.size} pairs.")
         /*
          * 1 run caller on all cell line data sets
-         * 2 evaluate each result against the appropriate kdb entry
+         * 2 evaluate each result with the appropriate script
          * 3 aggregate like entries
-         *
-         * 4 run caller on micro bams
-         * evaluate results
-         *
-         * 5 run caller on hapmap mixing experiments, evaluate results
-         *
-         *
-         * 4 store values in table ( or mongo...)
-         * 5 update website with new values
          *
          */
 
@@ -183,14 +174,14 @@ class RunCallersOnKDB extends QScript with Logging{
 		} 
 
         override def run(): Unit =  {
-            val aggregators = aggregateResults(mutCallers)
+            val collectors = aggregateResults(mutCallers)
 
             val bw = new BufferedWriter(new FileWriter(resultsFile) )
 
 
-            bw.write(s"${Summary.headerString}\tEvaluationGroup\tCaller\tVersion\tTime\n")
+            bw.write(Collector.headerString)
 
-            aggregators.foreach( (collector) => bw.write(collector.resultsToString) )
+            collectors.foreach( (collector) => bw.write(collector.resultsToString) )
 
             bw.close()
 
@@ -207,13 +198,12 @@ class RunCallersOnKDB extends QScript with Logging{
         val evaluationFiles: Seq[File] = mutCallerGroup.map(mg => mg.getEvaluator.getSummaryFile).toSeq
 
         val collectionResults:Seq[Summary] = evaluationFiles map readEvaluationFile
-
         val resultsToString: String = {
             val resultPairs = (collectionResults, mutCallerGroup).zipped
             val lines = resultPairs.map{ case(summary, mutCaller) =>
                 val callerInfo = mutCaller.caller
-                //s"${Summary.headerString}\tEvaluationGroup\tCaller\tVersion\tTime\n")
-                s"$summary\t$evalGroup\t${callerInfo.name}\t${callerInfo.version}\t${callerInfo.timeStamp}\n"
+                //must match format of Collection.headerString
+                s"$summary\t$evalGroup\t${callerInfo.name}\t${callerInfo.version}\t${callerInfo.timeStamp}\t${mutCaller.pair.tumor}\t${mutCaller.pair.normal}\n"
             }
             lines.mkString("")
 
@@ -245,6 +235,10 @@ class RunCallersOnKDB extends QScript with Logging{
                                                throw e
             }
         }
+
+    }
+    object Collector{
+        val headerString = s"${Summary.headerString}\tEvaluationGroup\tCaller\tVersion\tTime\tTumor\tNormal\n"
 
     }
 
