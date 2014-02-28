@@ -13,7 +13,7 @@ getSnps <- function(df){
 file <- args[1]
 output <- args[2]
 
-maf <- read.delim(file)
+maf <- read.delim(file, comment="#")
 
 snps = getSnps(maf)
 indels = getIndels(maf)

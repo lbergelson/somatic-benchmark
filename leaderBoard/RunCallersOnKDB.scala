@@ -154,7 +154,7 @@ class RunCallersOnKDB extends QScript with Logging{
         //update database and website
         val updater = new CommandLineFunction{
             @Input val summary = writeResults.resultsFile
-            override def commandLine: String = "sh update_website.sh" + summary
+            override def commandLine: String = "sh update_website.sh " + summary
         }
         add(updater)
 

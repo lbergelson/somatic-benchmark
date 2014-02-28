@@ -4,4 +4,5 @@ $tmp
 
 python update_database.py $new_summary
 python download_database.py  
-Rscript makeReport "tmp.tsv" leaderboard 
+Rscript makeReport.R "tmp.tsv" leaderboard 
+cp *.html /home/unix/louisb/private_html/
