@@ -118,8 +118,8 @@ class RunCallersOnKDB extends QScript with Logging{
          )
 
 
-    val cellLines = Map(HCC1143 -> new File("/home/unix/louisb/cga_home/kdb/cga_kdb/mongo/HCC1143_calls.maf"),
-                        HCC1954 -> new File("/home/unix/louisb/cga_home/kdb/cga_kdb/mongo/HCC1954_calls.maf"))
+    val cellLines = Map(HCC1143 -> new File("/home/unix/louisb/cga_home/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf"),
+                        HCC1954 -> new File("/home/unix/louisb/cga_home/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf"))
 
     /**
      * Builds the CommandLineFunctions that will be used to run this script and adds them to this.functions directly or using the add() utility method.
@@ -346,7 +346,7 @@ class RunCallersOnKDB extends QScript with Logging{
         @Output(doc="Annotation Summary")
         val summary: File = new File(outputDir,"annotated.summary_kdb.txt")
 
-        args = List(mafToAnnotate, kdbMaf, outputPrefix)
+        args = List(mafToAnnotate, kdbMaf, outputPrefix, "WEX")
 
         override def getSummaryFile: File = summary
     }
