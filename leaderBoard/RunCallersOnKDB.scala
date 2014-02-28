@@ -151,6 +151,13 @@ class RunCallersOnKDB extends QScript with Logging{
         val writeResults = new WriteOutResults(evalFiles, mutationCallerCmds, new File(s"${mutCaller.identifierString}.final.results.txt"))
         add(writeResults)
 
+        //update database and website
+        val updater = new CommandLineFunction{
+            @Input val summary = writeResults.resultsFile
+            override def commandLine: String = "sh update_website.sh" + summary
+        }
+        add(updater)
+
     }
 
 
@@ -159,8 +166,7 @@ class RunCallersOnKDB extends QScript with Logging{
 
 
 
-
-    class WriteOutResults(evaluationSummaries: Seq[File], mutCallers: Traversable[MutationCallerInvocation], @Output resultsFile: File) extends InProcessFunction {
+    class WriteOutResults(evaluationSummaries: Seq[File], mutCallers: Traversable[MutationCallerInvocation], @Output val resultsFile: File) extends InProcessFunction {
 		@Input
 		val inputFiles: List[File] = evaluationSummaries.toList
 

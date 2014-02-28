@@ -6,6 +6,7 @@ args <- commandArgs(trailingOnly=TRUE)
 print(args)
 
 stats_file = args[1] 
+output_file = args[2]
 
 stats <- read.delim(stats_file)
 
@@ -81,4 +82,4 @@ completeData <- addTo(completeData, t_complete)
 r <- addTo(r, hcc1143, hcc1954, normalNormal, completeData)
 
 # Phase 3: render report to file
-writeReport( r, filename="reports/my_report" ); # w/o extension
+writeReport( r, filename=output_file ); # w/o extension

@@ -33,7 +33,6 @@ def main(args):
             dr.writerow(row)
         
         
-    subprocess.call(["Rscript", "makeReport.R", tmpFile])
 
 
 
