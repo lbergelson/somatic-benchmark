@@ -37,6 +37,7 @@ if (toupper(type) %in% c("WEX", "EXOME", "CODING")) {
 	print("subseting to coding regions")
 	cols = c("Missense_Mutation", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "Nonsense_Mutation", "Splice_Site", "Silent")
 	print(cols)
+	mut <- mut[mut$Variant_Classification %in% cols,]
 	kdb = kdb[kdb$Variant_Classification %in% cols,]
 }
 
