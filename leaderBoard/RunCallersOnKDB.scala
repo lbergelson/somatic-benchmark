@@ -209,7 +209,8 @@ class RunCallersOnKDB extends QScript with Logging{
             val lines = resultPairs.map{ case(summary, mutCaller) =>
                 val callerInfo = mutCaller.caller
                 //must match format of Collection.headerString
-                s"$summary\t$evalGroup\t${callerInfo.name}\t${callerInfo.version}\t${callerInfo.timeStamp}\t${mutCaller.pair.tumor}\t${mutCaller.pair.normal}\n"
+                s"$summary\t$evalGroup\t${callerInfo.name}\t${callerInfo.version}\t${callerInfo.timeStamp}\t${mutCaller.calls}"+
+                    s"\t${mutCaller.tool}${mutCaller.pair.tumor}\t${mutCaller.pair.normal}\n"
             }
             lines.mkString("")
 
@@ -244,7 +245,7 @@ class RunCallersOnKDB extends QScript with Logging{
 
     }
     object Collector{
-        val headerString = s"${Summary.headerString}\tEvaluationGroup\tCaller\tVersion\tTime\tTumor\tNormal\n"
+        val headerString = s"${Summary.headerString}\tEvaluationGroup\tCaller\tVersion\tTime\tMaf\tScript\tTumor\tNormal\n"
 
     }
 
