@@ -20,7 +20,7 @@ mkdir -p $OUTPUTDIR
 #Fill in the commands to run your caller here
 
 MutectJar="/xchip/cga_home/louisb/gatk-protected/dist/GenomeAnalysisTK.jar"
-IntervalFile='benchmark.bed'
+IntervalFile='/xchip/cga/reference/hg19/gaf_20111020+broad_wex_1.1_hg19.bed'
 
 java -jar $MutectJar \
 '--analysis_type' 'MuTect' \
