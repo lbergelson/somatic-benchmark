@@ -289,6 +289,7 @@ class RunCallersOnKDB extends QScript with Logging{
         memoryLimit = 4
 
         def commandLine = required(tool)+
+			required(TOOL-DIR)+
             required(normal)+
             required(tumor)+
             required(reference)+
