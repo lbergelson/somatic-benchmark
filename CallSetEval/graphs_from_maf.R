@@ -161,7 +161,13 @@ shared_graphs <- function(maf, outputdir, prefix){
 
       ggplot(maf, aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
       save_with_name("allele_fraction_vs_tumor_depth")
-      
+
+      ggplot(maf, aes(x=Tumor_Depth, y= t_alt_count)) +scale_y_log10(breaks = log_breaks(max(maf$t_alt_count)), minor_breaks = c()) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
+      save_with_name("altreads_vs_tumor_depth")
+
+      qplot(data=maf,x=t_alt_count, fill=Classification, binwidth=1) + theme_bw()
+      save_with_name("alt_reads_all_samples") 
+ 
       qplot(data=maf,x=allele_fraction, fill=Classification) + theme_bw()
       save_with_name("allele_fraction_all_samples") 
       
