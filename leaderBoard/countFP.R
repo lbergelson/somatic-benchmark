@@ -1,4 +1,5 @@
 args <- commandArgs(trailingOnly=TRUE)
+print("Args:")
 print(args)
 
 
@@ -18,7 +19,7 @@ maf <- read.delim(file, comment="#")
 snps = getSnps(maf)
 indels = getIndels(maf)
 
-coding <-   c("Missense_Mutation", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "Nonsense_Mutation", "Splice_Site", "Silent")
+coding <-   c("Missense_Mutation", "Nonstop_Mutation","Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del","In_Frame_Ins", "Nonsense_Mutation", "Splice_Site", "Silent")
 snps <- snps[snps$Variant_Classification %in% coding,]
 indels <- indels[indels$Variant_Classification %in% coding,]
 

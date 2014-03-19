@@ -7,16 +7,18 @@
 #
 #=============================================
 library(methods)
-source("functions_mara.R")
 
 args <- commandArgs(trailingOnly=TRUE)
 print(args)
 
-mut.file = args[1] #mutation file - can be either call stats or maf format
-kdb.file = args[2] #file from the kdb
-pair = args[3] #pair id for naming of output folder
-type = args[4]
-interval.file = args[5]
+libdir = args[1]
+mut.file = args[2] #mutation file - can be either call stats or maf format
+kdb.file = args[3] #file from the kdb
+pair = args[4] #pair id for naming of output folder
+type = args[5]
+interval.file = args[6]
+
+source(paste0(libdir,"functions_mara.R"))
 
 print("Reading files")
 mut = read.table(as.character(mut.file), sep="\t", header=TRUE, quote='', stringsAsFactors=FALSE)
