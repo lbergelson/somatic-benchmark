@@ -1,5 +1,5 @@
 if [ "$#" -ne 11 ]; then
-    echo "usage: $0 <libdir> <run_type=NN|NormalNormal|KDB|HCC1143|HCC1954> <evaluation_maf> <comparison maf> <output prefix>"
+    echo "usage: $0 <libdir> <run_type=NN|NormalNormal|KDB|HCC1143|HCC1954> <evaluation_maf> <comparison maf> <output prefix> <individual> <caller> <caller version> <task config name> <tumor bam> <normal bam>"
 	exit 1
 fi
 
@@ -38,7 +38,7 @@ case "$run_type" in
 	;;
 "KDB"|"HCC1143"|"HCC1954")
 	echo "Comparing to kdb."
-	Rscript $libdir/kdb_annotate.R $evaluation_maf $comparison_maf WEX $output_prefix
+	Rscript $libdir/kdb_annotate.R $libdir $evaluation_maf $comparison_maf WEX $output_prefix
 	;;
 *)
 	echo "$run_type is not recognized."
@@ -47,6 +47,7 @@ case "$run_type" in
 	;; 
 esac 
 
+###### Extra important information
 timestamp=$( date +'%Y-%d-%d:%T' )
 bonusheader="EvaluationGroup\tIndividual\tCaller\tVersion\tTime\tMaf\tConfig\tTumor\tNormal\n"
 bonusInfo="$run_type\t$individual\t$caller\t$version\t$timestamp\t$evaluation_maf\t$config\t$tumor\t$normal"
