@@ -1,33 +1,33 @@
-pair_id	individual_id	case_sample	control_sample	pair_type
-exome-HCC1142-nn-full-180-182	HCC1142	exome-HCC1143-full-180	exome-HCC1143-full-182	NormalNormal
-exome-HCC1143-nn-full-180-181	HCC1143	exome-HCC1143-full-180	exome-HCC1143-full-181	NormalNormal
-exome-HCC1143-nn-full-182-180	HCC1143	exome-HCC1143-full-182	exome-HCC1143-full-180	NormalNormal
-exome-HCC1143-nn-full-182-181	HCC1143	exome-HCC1143-full-182	exome-HCC1143-full-181	NormalNormal
-exome-HCC1143-nn-full-181-180	HCC1143	exome-HCC1143-full-181	exome-HCC1143-full-180	NormalNormal
-exome-HCC1143-nn-full-181-182	HCC1143	exome-HCC1143-full-181	exome-HCC1143-full-182	NormalNormal
-exome-HCC1954-nn-full-186-188	HCC1954	exome-HCC1954-full-186	exome-HCC1954-full-188	NormalNormal
-exome-HCC1954-nn-full-186-187	HCC1954	exome-HCC1954-full-186	exome-HCC1954-full-187	NormalNormal
-exome-HCC1954-nn-full-188-186	HCC1954	exome-HCC1954-full-188	exome-HCC1954-full-186	NormalNormal
-exome-HCC1954-nn-full-188-187	HCC1954	exome-HCC1954-full-188	exome-HCC1954-full-187	NormalNormal
-exome-HCC1954-nn-full-187-186	HCC1954	exome-HCC1954-full-187	exome-HCC1954-full-186	NormalNormal
-exome-HCC1954-nn-full-187-188	HCC1954	exome-HCC1954-full-187	exome-HCC1954-full-188	NormalNormal
-exome-NA12878-nn-full-191-192	NA12878	exome-NA12878-full-191	exome-NA12878-full-192	NormalNormal
-exome-NA12878-nn-full-192-191	NA12878	exome-NA12878-full-192	exome-NA12878-full-191	NormalNormal
-exome-HCC1954-tn-full-183-186	HCC1954	exome-HCC1954-full-183	exome-HCC1954-full-186	HCC1954
-exome-HCC1954-tn-full-183-187	HCC1954	exome-HCC1954-full-183	exome-HCC1954-full-187	HCC1954
-exome-HCC1954-tn-full-183-188	HCC1954	exome-HCC1954-full-183	exome-HCC1954-full-188	HCC1954
-exome-HCC1954-tn-full-184-186	HCC1954	exome-HCC1954-full-184	exome-HCC1954-full-186	HCC1954
-exome-HCC1954-tn-full-184-187	HCC1954	exome-HCC1954-full-184	exome-HCC1954-full-187	HCC1954
-exome-HCC1954-tn-full-184-188	HCC1954	exome-HCC1954-full-184	exome-HCC1954-full-188	HCC1954
-exome-HCC1954-tn-full-185-186	HCC1954	exome-HCC1954-full-185	exome-HCC1954-full-186	HCC1954
-exome-HCC1954-tn-full-185-187	HCC1954	exome-HCC1954-full-185	exome-HCC1954-full-187	HCC1954
-exome-HCC1954-tn-full-185-188	HCC1954	exome-HCC1954-full-185	exome-HCC1954-full-188	HCC1954
-exome-HCC1143-tn-full-177-180	HCC1143	exome-HCC1143-full-177	exome-HCC1143-full-180	HCC1143
-exome-HCC1143-tn-full-177-181	HCC1143	exome-HCC1143-full-177	exome-HCC1143-full-181	HCC1143
-exome-HCC1143-tn-full-177-182	HCC1143	exome-HCC1143-full-177	exome-HCC1143-full-182	HCC1143
-exome-HCC1143-tn-full-178-180	HCC1143	exome-HCC1143-full-178	exome-HCC1143-full-180	HCC1143
-exome-HCC1143-tn-full-178-181	HCC1143	exome-HCC1143-full-178	exome-HCC1143-full-181	HCC1143
-exome-HCC1143-tn-full-178-182	HCC1143	exome-HCC1143-full-178	exome-HCC1143-full-182	HCC1143
-exome-HCC1143-tn-full-179-180	HCC1143	exome-HCC1143-full-179	exome-HCC1143-full-180	HCC1143
-exome-HCC1143-tn-full-179-181	HCC1143	exome-HCC1143-full-179	exome-HCC1143-full-181	HCC1143
-exome-HCC1143-tn-full-179-182	HCC1143	exome-HCC1143-full-179	exome-HCC1143-full-182	HCC1143
+pair_id	individual_id	case_sample	control_sample	leaderboard_eval_type	comparison_maf
+exome-HCC1143-nn-full-180-182	HCC1143	exome-HCC1143-full-180	exome-HCC1143-full-182	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1143-nn-full-180-181	HCC1143	exome-HCC1143-full-180	exome-HCC1143-full-181	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1143-nn-full-182-180	HCC1143	exome-HCC1143-full-182	exome-HCC1143-full-180	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1143-nn-full-182-181	HCC1143	exome-HCC1143-full-182	exome-HCC1143-full-181	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1143-nn-full-181-180	HCC1143	exome-HCC1143-full-181	exome-HCC1143-full-180	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1143-nn-full-181-182	HCC1143	exome-HCC1143-full-181	exome-HCC1143-full-182	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-nn-full-186-188	HCC1954	exome-HCC1954-full-186	exome-HCC1954-full-188	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-nn-full-186-187	HCC1954	exome-HCC1954-full-186	exome-HCC1954-full-187	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-nn-full-188-186	HCC1954	exome-HCC1954-full-188	exome-HCC1954-full-186	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-nn-full-188-187	HCC1954	exome-HCC1954-full-188	exome-HCC1954-full-187	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-nn-full-187-186	HCC1954	exome-HCC1954-full-187	exome-HCC1954-full-186	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-nn-full-187-188	HCC1954	exome-HCC1954-full-187	exome-HCC1954-full-188	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-NA12878-nn-full-191-192	NA12878	exome-NA12878-full-191	exome-NA12878-full-192	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-NA12878-nn-full-192-191	NA12878	exome-NA12878-full-192	exome-NA12878-full-191	NormalNormal	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-183-186	HCC1954	exome-HCC1954-full-183	exome-HCC1954-full-186	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-183-187	HCC1954	exome-HCC1954-full-183	exome-HCC1954-full-187	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-183-188	HCC1954	exome-HCC1954-full-183	exome-HCC1954-full-188	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-184-186	HCC1954	exome-HCC1954-full-184	exome-HCC1954-full-186	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-184-187	HCC1954	exome-HCC1954-full-184	exome-HCC1954-full-187	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-184-188	HCC1954	exome-HCC1954-full-184	exome-HCC1954-full-188	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-185-186	HCC1954	exome-HCC1954-full-185	exome-HCC1954-full-186	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-185-187	HCC1954	exome-HCC1954-full-185	exome-HCC1954-full-187	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1954-tn-full-185-188	HCC1954	exome-HCC1954-full-185	exome-HCC1954-full-188	HCC1954	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1954_calls.oncotated.maf
+exome-HCC1143-tn-full-177-180	HCC1143	exome-HCC1143-full-177	exome-HCC1143-full-180	HCC1143	/xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
+exome-HCC1143-tn-full-177-181	HCC1143	exome-HCC1143-full-177	exome-HCC1143-full-181	HCC1143 /xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
+exome-HCC1143-tn-full-177-182	HCC1143	exome-HCC1143-full-177	exome-HCC1143-full-182	HCC1143 /xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
+exome-HCC1143-tn-full-178-180	HCC1143	exome-HCC1143-full-178	exome-HCC1143-full-180	HCC1143 /xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
+exome-HCC1143-tn-full-178-181	HCC1143	exome-HCC1143-full-178	exome-HCC1143-full-181	HCC1143 /xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
+exome-HCC1143-tn-full-178-182	HCC1143	exome-HCC1143-full-178	exome-HCC1143-full-182	HCC1143 /xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
+exome-HCC1143-tn-full-179-180	HCC1143	exome-HCC1143-full-179	exome-HCC1143-full-180	HCC1143 /xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
+exome-HCC1143-tn-full-179-181	HCC1143	exome-HCC1143-full-179	exome-HCC1143-full-181	HCC1143 /xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
+exome-HCC1143-tn-full-179-182	HCC1143	exome-HCC1143-full-179	exome-HCC1143-full-182	HCC1143 /xchip/cga_home/louisb/kdb/cga_kdb/mongo/HCC1143_calls.oncotated.maf
