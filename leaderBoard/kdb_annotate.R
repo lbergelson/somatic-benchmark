@@ -9,7 +9,6 @@
 library(methods)
 
 args <- commandArgs(trailingOnly=TRUE)
-print(args)
 
 libdir = args[1]
 mut.file = args[2] #mutation file - can be either call stats or maf format
@@ -17,6 +16,13 @@ kdb.file = args[3] #file from the kdb
 pair = args[4] #pair id for naming of output folder
 type = args[5]
 interval.file = args[6]
+
+cat("Libdir:", libdir, "\n")
+cat("Mutation File:", mut.file, "\n")
+cat("KDB file:", kdb.file, "\n")
+cat("Output prefix:", pair, "\n")
+cat("Type:", type, "\n")
+cat("Interval file:", interval.file, "\n")
 
 source(paste0(libdir,"functions_mara.R"))
 
@@ -37,14 +43,14 @@ if (file.exists(interval.file)) {
 
 if (toupper(type) %in% c("WEX", "EXOME", "CODING")) {
 	print("subseting to coding regions")
-	cols = c("Missense_Mutation", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del", "Nonsense_Mutation", "Splice_Site", "Silent")
+	cols = c("Missense_Mutation", "Frame_Shift_Del", "Frame_Shift_Ins", "In_Frame_Del","In_Frame_Ins","Nonstop_Mutation", "Nonsense_Mutation", "Splice_Site", "Silent")
 	print(cols)
 	mut <- mut[mut$Variant_Classification %in% cols,]
 	kdb = kdb[kdb$Variant_Classification %in% cols,]
 }
 
 kdb_tp = subset(kdb, kdb$Status %in% "TP")
-kdb_fp = subset(kdb, kdb$Status %in% "FP")
+kdb_fp = subset(kdb, !kdb$Status %in% "TP")
 
 annotating_maf <- function(maf, kdb_tp, kdb_fp) {
 #	main implementation function to annotate maf by kdb
