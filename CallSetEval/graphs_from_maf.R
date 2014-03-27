@@ -1,41 +1,20 @@
-# ### Getting input file names  
-if( interactive() ){
-  #for developement and testing purposes
-  print("I see you're running interactively, setting default values")
-  outputdir <- "."
-  inputfile <- "~/Downloads/An_Histo_Only.final_analysis_set.maf"
-} else {
-  args <- commandArgs(trailingOnly=TRUE)
-
-  if(length(args)!=2){
-    print("Usage: Rscript graphs_from_mafs.R <input.maf> <outputdirectory> ")
-    quit()
-  }
-  inputfile <- args[1]
-  print(paste("input maf =", inputfile))
-  outputdir <- args[2]
-  print(paste("output directory =", outputdir))
- }
-
-if( ! file.exists(inputfile)){
-    print("Input maf does not exist.  Exiting")
-    quit()
-} 
-if( ! file.exists(outputdir) ){
-    print("Output directory doesn't exist.  Creating it.")
-    dir.create(outputdir)
-}
-
 ###  Loading required libraries
+print("Loading Libraries")
 library(ggplot2)
 library(plyr)
+library(dplyr)
 library(gridExtra)
 library(gtools)
 library(gdata)
 library(scales)
+library(intervals)
+library(GenomicRanges)
+library(reshape)
+print("Done loading libraries")
+
+options(error=traceback)
 
 
-### Defining functions
 NAToFalse <- function(x){
     NAToUnknown(x, unknown=FALSE, force=TRUE)
 }
@@ -43,8 +22,6 @@ NAToFalse <- function(x){
 sort_chromosomes <- function(df){
   return(factor(df$Chromosome, mixedsort(df$Chromosome))) 
 }
-
-
 
 
 cosmic_or_dbsnp <- function(is_cosmic, is_dbsnp){
@@ -78,13 +55,41 @@ coding_or_non_coding <- function(variant_classification){
     }
 }
 
+df_to_granges <- function(df){
+    gr <- GRanges( seqnames= Rle( df$Chromosome ),
+                    ranges= IRanges( df$Start_position, end= df$End_position))
+    return(gr)   
+} 
+
+##Read an interval_list file and return simplified GRanges object 
+read_interval_file <- function(interval_file) {
+    if( ! is.null(interval_file) & file.exists(interval_file)){
+     print(paste("Loading interval file:", interval_file))
+     intervals <- read.delim(interval_file)           
+     return ( reduce(df_to_granges(intervals)) ) 
+
+    } else {
+      print(paste("Can't find interval file:", interval_file))
+      quit()
+    }
+} 
+
+in_interval <- function( chr, start, end, intervals) {
+    variant <- GRanges( seqnames=Rle(c(chr)), ranges=(IRanges(c(start), end=c(end))))
+    return( variant == intersect(variant, intervals))
+}
+
 ### Preparing data
-prepare_data <- function(inputfile) {
+prepare_data <- function(inputfile, intervals) {
+    print("Preparing Data")
     maf <- read.table(file=inputfile,header=TRUE, quote='', sep="\t", stringsAsFactors=FALSE)
     
     maf$Pair_ID <- paste0(gsub("-Tumor","",maf$Tumor_Sample_Barcode), "\n",  gsub("-Normal","",maf$Matched_Norm_Sample_Barcode))
-    
+    maf$Pair <- paste0(gsub("-Tumor","",maf$Tumor_Sample_Barcode),"-",gsub("-Normal","",maf$Matched_Norm_Sample_Barcode))
+ 
     maf$Chromosome <- sort_chromosomes(maf)
+    maf <- arrange(maf, Chromosome, Start_position)
+    maf$Chromosome <- droplevels(maf$Chromosome)
     
     maf$allele_fraction <- maf$t_alt_count / (maf$t_alt_count+maf$t_ref_count)
     
@@ -99,6 +104,15 @@ prepare_data <- function(inputfile) {
     maf$Indel_Length = mapply( calc_length, maf$Reference_Allele, maf$Tumor_Seq_Allele2, maf$Variant_Type)
     
     maf <- mutate(maf, Tumor_Depth = t_alt_count+t_ref_count)
+
+    if(!is.null(intervals)){
+        mafRanges <- df_to_granges(maf)
+        maf$in_interval <- countOverlaps(mafRanges, intervals) > 0
+    }     
+    else{
+        maf$in_interval <- FALSE
+    }
+
     return(maf)
 }
 
@@ -182,6 +196,8 @@ shared_graphs <- function(maf, outputdir, prefix){
       qplot(data=maf, x=Tumor_Depth, fill=Classification) + theme_bw() + scale_x_tumor_depth(maf)
       save_with_name("tumor_depth_all_samples")
       
+      qplot(data=maf, x=Tumor_Depth, fill=Classification, facets= ~in_interval) + theme_bw() + scale_x_tumor_depth(maf)
+      save_with_name("tumor_depth_all_samples_by_territory")
 
 
 }
@@ -244,8 +260,106 @@ draw_graphs <- function(basedir, subdir, maf){
        
 }
 
-maf <- prepare_data(inputfile)
-draw_graphs(outputdir, "all", maf)
-draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
-draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
+create_mutation_stats_report <- function(input_file_name, interval_file_name, maf, interval_size){
+    dir.create( "reports", showWarnings=FALSE )
+    require( Nozzle.R1 )
+   
+    maf[maf$Variant_Type %in% c("INS","DEL"),]$Variant_Type <- "INDEL"
+
+    per_pair_counts <- ddply(maf, .( Coding, in_interval, Variant_Type, Pair), summarize, count = length(Variant_Type))    
+    all_pair <- ddply(per_pair_counts, .(Coding, Variant_Type, Pair), summarize,  count=sum(count))
+
+    sum_counts <- ddply(per_pair_counts, .(Coding, in_interval, Variant_Type), summarize, total = sum(count), mean = mean(count), rate = ifelse(all(in_interval), mean / interval_size * 1000000, NA))
+    #all_counts <- ddply(sum_counts, .(Coding, Variant_Type), summarize, count = sum( count ), mean=sum(mean), rate = NA)
+    ggplot(data=per_pair_counts, aes(x= in_interval, y=count,  fill=Variant_Type)) + geom_boxplot()+ facet_wrap(facets=~Coding) + geom_boxplot(data=all_pair, aes(x="All", y=count, fill=Variant_Type))
+    ggsave("reports/summary.pdf")  
+    ggsave("reports/summary.png", width=7, height=7) 
+    # Phase 1: create report elements
+    r <- newCustomReport( "Mutations Stats" )
+    s <- newSection( "By Sample" )
+    ss1 <- newSection( "Per Pair Counts" )
+    
+    boxplot <- newFigure("summary.png",fileHighRes="summary.pdf","Per pair counts of indels and snps.")
+       
+    
+    ss2 <- newSection( "Totals" )
+    pairs_table <- newTable(per_pair_counts , "Mutation Counts per Pair")
+    totals_table <- newTable(sum_counts, "Overall Mutations") 
+    p <- newParagraph( paste("Counts of coding and non-coding mutations from", input_file_name, ".\nInterval file:", interval_file_name, "contains", interval_size/1000000, "Mb"))
+
+   # Phase 2: assemble report structure bottom-up
+    ss1 <- addTo( ss1, pairs_table ); # parent, child_1, ..., child_n 
+    ss2 <- addTo( ss2, totals_table, boxplot );
+    s <- addTo( s, ss1, ss2, p );
+    r <- addTo( r, s );
+    
+    # Phase 3: render report to file
+    writeReport( r, filename="reports/mutation_counts" ); # w/o extension
+}
+
+# ### Getting input file names  
+if( interactive() ){
+  #for developement and testing purposes
+  print("Loaded in interactive mode, not running anything." )
+} else {
+  args <- commandArgs(trailingOnly=TRUE)
+
+  if(length(args)<2 | length(args) >3){
+    print("Usage: Rscript graphs_from_mafs.R <input.maf> <outputdirectory> <optional:interval file>")
+    quit()
+  }
+
+  inputfile <- args[1]
+  print(paste("input maf =", inputfile))
+  outputdir <- args[2]
+  print(paste("output directory =", outputdir))
+  
+  interval_file <- NULL
+  if(length(args) > 2){
+    interval_file <- args[3] 
+    print(paste("interval file =", interval_file))
+  }
+
+	if( ! file.exists(inputfile)){
+	    print("Input maf does not exist.  Exiting")
+	    quit()
+	} 
+	if( ! file.exists(outputdir) ){
+	    print("Output directory doesn't exist.  Creating it.")
+	    dir.create(outputdir)
+	}
+   
+     
+
+    intervals <- read_interval_file(interval_file)
+
+	maf <- prepare_data(inputfile, intervals)
+    
+    create_mutation_stats_report(inputfile, interval_file, maf, sum(width(intervals)) )
+
+    draw_graphs(outputdir, "all", maf) 
+    draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
+	draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
+	
+    draw_graphs(outputdir, "in_interval", maf[maf$in_interval == TRUE,])
+    draw_graphs(outputdir, "in_interval", maf[maf$in_interval == FALSE,])
+
+	#draw_graphs(outputdir, "exome_coding", exome[exome$Coding == "Coding",])
+	#draw_graphs(outputdir, "exome_non_coding", exome[exome$Coding == "Non_Coding",])
+	
+	#not_in <- function(df1, df2){
+	#return( df2[!apply(df2, 1, paste, collapse = "") %in%
+	        #apply(df1, 1, paste, collapse = ""), ] ) 
+	#}
+	
+	#non_exome <- not_in(maf, exome)
+	#draw_graphs(outputdir, "non_exome_coding", non_exome[non_exome$Coding == "Coding",])
+	#draw_graphs(outputdir, "non_exome_non_coding", non_exome[non_exome$Coding == "Non_Coding",])
+
+
+ }
+
+
+
+
 
