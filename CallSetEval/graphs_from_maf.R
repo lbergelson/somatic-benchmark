@@ -135,20 +135,27 @@ plot_percentage_and_count <- function(df, variable, name, outputdir){
     theme_bw(base_family='Helvetica')+ scale_fill_brewer(palette="Paired") +
     theme(axis.title.y=element_blank(), axis.text.y=element_blank())
 
-  g <- arrangeGrob(percent, counts, nrow=1)
+  g <- arrangeGrob(percent, counts, nrow=1, sub=textGrob(name, vjust=0.1)) 
   name_pieces <- c(outputdir, "/", name, ".pdf")
   filename <- paste(name_pieces, collapse='')
   print(paste("Saving",filename))
   ggsave(file=filename, g, height=max(samples/8,4), width=10, units="in", limitsize=FALSE)
 }
 
+add_title_info <- function(plot, title, footnote) {
+    plot <- plot + ggtitle(gsub("_"," ", title))
+    plot <- arrangeGrob(plot, sub=textGrob(footnote, x = 0, hjust = -0.1, vjust=0.1))
+    return(plot)
+}
 
 bind_save_function <- function(outputdir, prefix){
-    save_function <- function(name,height=10, width=10) {
+    save_function <- function(name,height=10, width=10, plot=last_plot()) {
       name_pieces <- c(outputdir, "/",prefix,"_",name, ".pdf")
       filename <- paste(name_pieces, collapse='')
+        
+      plot <- add_title_info(plot, name, prefix)
       print(paste("Saving",filename))
-      ggsave(file=filename, height=height, width=width, units="in", limitsize=FALSE)  
+      ggsave(file=filename, height=height, width=width, units="in", plot=plot, limitsize=FALSE)  
     }     
 }
 
@@ -344,19 +351,7 @@ if( interactive() ){
 	draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
 	
     draw_graphs(outputdir, "in_interval", maf[maf$in_interval == TRUE,])
-    draw_graphs(outputdir, "in_interval", maf[maf$in_interval == FALSE,])
-
-	#draw_graphs(outputdir, "exome_coding", exome[exome$Coding == "Coding",])
-	#draw_graphs(outputdir, "exome_non_coding", exome[exome$Coding == "Non_Coding",])
-	
-	#not_in <- function(df1, df2){
-	#return( df2[!apply(df2, 1, paste, collapse = "") %in%
-	        #apply(df1, 1, paste, collapse = ""), ] ) 
-	#}
-	
-	#non_exome <- not_in(maf, exome)
-	#draw_graphs(outputdir, "non_exome_coding", non_exome[non_exome$Coding == "Coding",])
-	#draw_graphs(outputdir, "non_exome_non_coding", non_exome[non_exome$Coding == "Non_Coding",])
+    draw_graphs(outputdir, "not_in_interval", maf[maf$in_interval == FALSE,])
 
 
  }
