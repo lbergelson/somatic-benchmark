@@ -200,6 +200,8 @@ shared_graphs <- function(maf, outputdir, prefix){
       save_with_name("allele_fraction_by_sample_normalized", height=max(samples/4,4), width=10)
       
       plot_percentage_and_count(maf, "Classification", paste0(prefix,"_COSMIC_overlap_by_sample"), outputdir)
+
+      plot_percentage_and_count(maf, "in_interval", paste0(prefix,"_in_interval_by_sample"), outputdir)
       
       qplot(data=maf, x=Tumor_Depth, fill=Classification) + theme_bw() + scale_x_tumor_depth(maf)
       save_with_name("tumor_depth_all_samples")
