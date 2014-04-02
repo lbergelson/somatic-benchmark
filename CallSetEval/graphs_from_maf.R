@@ -2,7 +2,6 @@
 print("Loading Libraries")
 library(ggplot2)
 library(plyr)
-library(dplyr)
 library(gridExtra)
 library(gtools)
 library(gdata)
@@ -88,9 +87,11 @@ prepare_data <- function(inputfile, intervals) {
     maf$Pair <- paste0(gsub("-Tumor","",maf$Tumor_Sample_Barcode),"-",gsub("-Normal","",maf$Matched_Norm_Sample_Barcode))
  
     maf$Chromosome <- sort_chromosomes(maf)
-    maf <- arrange(maf, Chromosome, Start_position)
     maf$Chromosome <- droplevels(maf$Chromosome)
+
+    maf <- maf[with(maf, order(Chromosome, Start_position)),]
     
+   
     maf$allele_fraction <- maf$t_alt_count / (maf$t_alt_count+maf$t_ref_count)
     
     maf$Matches_COSMIC_Mutation <- NAToFalse( ! maf$COSMIC_overlapping_mutations == "")
@@ -265,11 +266,13 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     require( Nozzle.R1 )
    
     maf[maf$Variant_Type %in% c("INS","DEL"),]$Variant_Type <- "INDEL"
+    
+    interval_mb <- interval_size / 1000000
 
     per_pair_counts <- ddply(maf, .( Coding, in_interval, Variant_Type, Pair), summarize, count = length(Variant_Type))    
     all_pair <- ddply(per_pair_counts, .(Coding, Variant_Type, Pair), summarize,  count=sum(count))
 
-    sum_counts <- ddply(per_pair_counts, .(Coding, in_interval, Variant_Type), summarize, total = sum(count), mean = mean(count), rate = ifelse(all(in_interval), mean / interval_size * 1000000, NA))
+    sum_counts <- ddply(per_pair_counts, .(Coding, in_interval, Variant_Type), here(summarize), total = sum(count), mean = mean(count), rate = ifelse(all(in_interval), mean / interval_mb, NA))
     #all_counts <- ddply(sum_counts, .(Coding, Variant_Type), summarize, count = sum( count ), mean=sum(mean), rate = NA)
     ggplot(data=per_pair_counts, aes(x= in_interval, y=count,  fill=Variant_Type)) + geom_boxplot()+ facet_wrap(facets=~Coding) + geom_boxplot(data=all_pair, aes(x="All", y=count, fill=Variant_Type))
     ggsave("reports/summary.pdf")  
@@ -285,7 +288,7 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     ss2 <- newSection( "Totals" )
     pairs_table <- newTable(per_pair_counts , "Mutation Counts per Pair")
     totals_table <- newTable(sum_counts, "Overall Mutations") 
-    p <- newParagraph( paste("Counts of coding and non-coding mutations from", input_file_name, ".\nInterval file:", interval_file_name, "contains", interval_size/1000000, "Mb"))
+    p <- newParagraph( paste("Counts of coding and non-coding mutations from", input_file_name, ".\nInterval file:", interval_file_name, "contains", interval_mb, "Mb"))
 
    # Phase 2: assemble report structure bottom-up
     ss1 <- addTo( ss1, pairs_table ); # parent, child_1, ..., child_n 
@@ -332,7 +335,6 @@ if( interactive() ){
      
 
     intervals <- read_interval_file(interval_file)
-
 	maf <- prepare_data(inputfile, intervals)
     
     create_mutation_stats_report(inputfile, interval_file, maf, sum(width(intervals)) )
