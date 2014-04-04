@@ -284,8 +284,8 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     sum_counts <- ddply(per_pair_counts, .(Coding, in_interval, Variant_Type), here(summarize), total = sum(count), mean = mean(count), rate = ifelse(all(in_interval), mean / interval_mb, NA))
     #all_counts <- ddply(sum_counts, .(Coding, Variant_Type), summarize, count = sum( count ), mean=sum(mean), rate = NA)
     ggplot(data=per_pair_counts, aes(x= in_interval, y=count,  fill=Variant_Type)) + geom_boxplot()+ facet_wrap(facets=~Coding) + geom_boxplot(data=all_pair, aes(x="All", y=count, fill=Variant_Type))
-    ggsave("reports/summary.pdf")  
-    ggsave("reports/summary.png", width=7, height=7) 
+    ggsave("summary.pdf")  
+    ggsave("summary.png", width=7, height=7) 
     # Phase 1: create report elements
     r <- newCustomReport( "Mutations Stats" )
     s <- newSection( "By Sample" )
@@ -297,7 +297,7 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     ss2 <- newSection( "Totals" )
     pairs_table <- newTable(per_pair_counts , "Mutation Counts per Pair")
     totals_table <- newTable(sum_counts, "Overall Mutations") 
-    p <- newParagraph( paste("Counts of coding and non-coding mutations from", input_file_name, ".\nInterval file:", interval_file_name, "contains", interval_mb, "Mb"))
+    p <- newParagraph( paste("Counts of coding and non-coding mutations from", input_file_name, ".\n Interval file:", interval_file_name, "contains", interval_mb, "Mb"))
 
    # Phase 2: assemble report structure bottom-up
     ss1 <- addTo( ss1, pairs_table ); # parent, child_1, ..., child_n 
@@ -306,7 +306,7 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     r <- addTo( r, s );
     
     # Phase 3: render report to file
-    writeReport( r, filename="reports/mutation_counts" ); # w/o extension
+    writeReport( r); # w/o extension
 }
 
 # ### Getting input file names  
