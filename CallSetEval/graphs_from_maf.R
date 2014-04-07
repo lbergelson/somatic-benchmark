@@ -46,12 +46,7 @@ coding_or_non_coding <- function(variant_classification){
     coding <-  c("Nonsense_Mutation","Nonstop_Mutation","Missense_Mutation", "Splice_Site", "Silent","Frame_Shift_Del",
          "Frame_Shift_Ins", "In_Frame_Del", "In_Frame_Ins")
 
-    if (variant_classification %in% coding){
-        return("Coding")
-    }
-    else {
-        return("Non_Coding")
-    }
+    return( ifelse(variant_classification %in% coding, "Coding", "Non_Coding"))
 }
 
 df_to_granges <- function(df){
@@ -100,7 +95,7 @@ prepare_data <- function(inputfile, intervals) {
     
     maf$Classification <-  mapply(cosmic_or_dbsnp,maf$Matches_COSMIC_Mutation, maf$Overlaps_DB_SNP_Site)
     
-    maf$Coding <- mapply(coding_or_non_coding, maf$Variant_Classification)
+    maf$Coding <- coding_or_non_coding( maf$Variant_Classification)
     
     maf$Indel_Length = mapply( calc_length, maf$Reference_Allele, maf$Tumor_Seq_Allele2, maf$Variant_Type)
     
@@ -181,6 +176,7 @@ shared_graphs <- function(maf, outputdir, prefix){
          
       samples <- length( unique(maf$Pair_ID))
 
+      
       ggplot(maf, aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
       save_with_name("allele_fraction_vs_tumor_depth")
 
