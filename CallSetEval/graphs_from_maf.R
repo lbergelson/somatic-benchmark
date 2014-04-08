@@ -267,7 +267,6 @@ draw_graphs <- function(basedir, subdir, maf){
 }
 
 create_mutation_stats_report <- function(input_file_name, interval_file_name, maf, interval_size){
-    dir.create( "reports", showWarnings=FALSE )
     require( Nozzle.R1 )
    
     maf[maf$Variant_Type %in% c("INS","DEL"),]$Variant_Type <- "INDEL"
@@ -335,7 +334,7 @@ print(paste("interval file =", interval_file))
 
 if( ! file.exists(inputfile)){
     print("Input maf does not exist.  Exiting")
-    quit()
+    stop()
 } 
 if( ! file.exists(outputdir) ){
     print("Output directory doesn't exist.  Creating it.")
@@ -355,10 +354,3 @@ draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
 
 draw_graphs(outputdir, "in_interval", maf[maf$in_interval == TRUE,])
 draw_graphs(outputdir, "not_in_interval", maf[maf$in_interval == FALSE,])
-
-
-
-
-
-
-
