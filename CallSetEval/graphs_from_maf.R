@@ -305,54 +305,58 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     writeReport( r); # w/o extension
 }
 
-# ### Getting input file names  
-if( interactive() ){
-  #for developement and testing purposes
-  print("Loaded in interactive mode, not running anything." )
-} else {
-  args <- commandArgs(trailingOnly=TRUE)
+#### Getting input file names  
 
-  if(length(args)<2 | length(args) >3){
-    print("Usage: Rscript graphs_from_mafs.R <input.maf> <outputdirectory> <optional:interval file>")
+### parse options
+suppressPackageStartupMessages(require(optparse))
+option_list <- list(                                                                                                                        
+    make_option(c("-o", "--outputdir"), action="store", type="character", default=".",  help="Output directory"),
+    make_option(c("-l", "--interval_file"), action="store", type="character", default=NULL, help="Territory file (must be in bed format)")
+)
+
+parsed <- parse_args(OptionParser(option_list=option_list, usage = "Rscript %prog [options] <maf_file>"), print_help_and_exit=TRUE, positional_arguments=1)
+opt <- parsed$options
+positional <- parsed$args
+
+print(paste("positional:",positional))
+print(paste("opts:",opt))
+
+if(length(positional) != 1){
+    stop("maf file is a required parameter")
+}
+
+inputfile <- positional[1]
+outputdir <- opt$outputdir
+interval_file <- opt$interval_file
+
+print(paste("input maf =", inputfile))
+print(paste("output directory =", outputdir))
+print(paste("interval file =", interval_file))
+
+if( ! file.exists(inputfile)){
+    print("Input maf does not exist.  Exiting")
     quit()
-  }
+} 
+if( ! file.exists(outputdir) ){
+    print("Output directory doesn't exist.  Creating it.")
+    dir.create(outputdir)
+}
 
-  inputfile <- args[1]
-  print(paste("input maf =", inputfile))
-  outputdir <- args[2]
-  print(paste("output directory =", outputdir))
-  
-  interval_file <- NULL
-  if(length(args) > 2){
-    interval_file <- args[3] 
-    print(paste("interval file =", interval_file))
-  }
+ 
 
-	if( ! file.exists(inputfile)){
-	    print("Input maf does not exist.  Exiting")
-	    quit()
-	} 
-	if( ! file.exists(outputdir) ){
-	    print("Output directory doesn't exist.  Creating it.")
-	    dir.create(outputdir)
-	}
-   
-     
+intervals <- read_interval_file(interval_file)
+maf <- prepare_data(inputfile, intervals)
 
-    intervals <- read_interval_file(interval_file)
-	maf <- prepare_data(inputfile, intervals)
-    
-    create_mutation_stats_report(inputfile, interval_file, maf, sum(width(intervals)) )
+create_mutation_stats_report(inputfile, interval_file, maf, sum(width(intervals)) )
 
-    draw_graphs(outputdir, "all", maf) 
-    draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
-	draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
-	
-    draw_graphs(outputdir, "in_interval", maf[maf$in_interval == TRUE,])
-    draw_graphs(outputdir, "not_in_interval", maf[maf$in_interval == FALSE,])
+draw_graphs(outputdir, "all", maf) 
+draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
+draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
+
+draw_graphs(outputdir, "in_interval", maf[maf$in_interval == TRUE,])
+draw_graphs(outputdir, "not_in_interval", maf[maf$in_interval == FALSE,])
 
 
- }
 
 
 
