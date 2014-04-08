@@ -1,3 +1,3 @@
 rm -r test-output/
 
-Rscript test.R test.maf test-output old_exome.interval_list
+Rscript test.R -o test-output -l old_exome.interval_list test.maf
