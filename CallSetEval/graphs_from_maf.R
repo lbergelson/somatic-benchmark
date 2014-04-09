@@ -9,6 +9,7 @@ library(scales)
 library(intervals)
 library(GenomicRanges)
 library(reshape)
+library(Nozzle.R1)
 print("Done loading libraries")
 
 options(error=traceback)
@@ -145,12 +146,17 @@ add_title_info <- function(plot, title, footnote) {
 
 bind_save_function <- function(outputdir, prefix){
     save_function <- function(name,height=10, width=10, plot=last_plot()) {
-      name_pieces <- c(outputdir, "/",prefix,"_",name, ".pdf")
-      filename <- paste(name_pieces, collapse='')
-        
+      name_pieces <- c(outputdir, "/",prefix,"_",name)
+      filename <- paste(c(name_pieces,".pdf"), sep="", collapse='')
+      standard <- paste(c(name_pieces,".png"), sep="", collapse='')
+
       plot <- add_title_info(plot, name, prefix)
       print(paste("Saving",filename))
+      
+      ggsave(file=standard, height=min(7,height), width=min(7,width),units="in",  plot=plot)
       ggsave(file=filename, height=height, width=width, units="in", plot=plot, limitsize=FALSE)  
+      return( newFigure( standard, fileHighRes=filename, exportId=name, name))
+                                    
     }     
 }
 
@@ -172,6 +178,7 @@ log_breaks <- function(max){
 
 #graphs that make sense for snps and indels together or apart
 shared_graphs <- function(maf, outputdir, prefix){
+      figures <- list()
       save_with_name <- bind_save_function(outputdir, prefix) 
          
       samples <- length( unique(maf$Pair_ID))
@@ -205,13 +212,14 @@ shared_graphs <- function(maf, outputdir, prefix){
       qplot(data=maf, x=Tumor_Depth, fill=Classification, facets= ~in_interval) + theme_bw() + scale_x_tumor_depth(maf)
       save_with_name("tumor_depth_all_samples_by_territory")
 
-
+      return(figures)
 }
 
 
 
 draw_graphs <- function(basedir, subdir, maf){
-    
+    figures = list()
+
     print(paste("drawing graphs for", subdir))
     outputdir <- paste(basedir, subdir, sep="/")
     if( ! file.exists(outputdir) ){
@@ -220,7 +228,8 @@ draw_graphs <- function(basedir, subdir, maf){
     
     save_with_name <- bind_save_function(outputdir, subdir)
     #first draw graphs for all variants
-    shared_graphs(maf, outputdir, paste0(subdir,"_all_variants"))
+    shared_figures <- shared_graphs(maf, outputdir, paste0(subdir,"_all_variants"))
+    figures <- c(figures,shared_figures)
 
     #then snps (and dnp, tnps for now...)
     snps_only <- maf[!(maf$Variant_Type %in% c("DEL","INS")), ]
@@ -230,10 +239,10 @@ draw_graphs <- function(basedir, subdir, maf){
         
         if("i_t_lod_fstar" %in% colnames(snps_only)){
             qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+scale_x_log10(breaks=log_breaks(max(snps_only$i_t_lod_fstar)), minor_breaks=c())+theme_bw()
-            save_with_name("snp_lod_score")
+            figures <- c(figures, list(save_with_name("snp_lod_score")))
 
             ggplot(snps_only, aes(x=Tumor_Depth, y= i_t_lod_fstar)) +stat_binhex(bins=100)+scale_y_log10(breaks=log_breaks(max(snps_only$i_t_lod_fstar)), minor_breaks=c())+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
-            save_with_name("snp_lod_score_vs_tumor_depth")    
+            figures <- c(figures, list(save_with_name("snp_lod_score_vs_tumor_depth")))
         } else {
             print("no lod score in maf")
         }
@@ -262,7 +271,7 @@ draw_graphs <- function(basedir, subdir, maf){
     }
 
 
-     
+    return(figures) 
        
 }
 
@@ -274,6 +283,7 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     interval_mb <- interval_size / 1000000
 
     per_pair_counts <- ddply(maf, .( Coding, in_interval, Variant_Type, Pair), summarize, count = length(Variant_Type))    
+    
     all_pair <- ddply(per_pair_counts, .(Coding, Variant_Type, Pair), summarize,  count=sum(count))
 
     sum_counts <- ddply(per_pair_counts, .(Coding, in_interval, Variant_Type), here(summarize), total = sum(count), mean = mean(count), rate = ifelse(all(in_interval), mean / interval_mb, NA))
@@ -287,11 +297,13 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     ss1 <- newSection( "Per Pair Counts" )
     
     boxplot <- newFigure("summary.png",fileHighRes="summary.pdf","Per pair counts of indels and snps.")
-       
+         
     
     ss2 <- newSection( "Totals" )
     pairs_table <- newTable(per_pair_counts , "Mutation Counts per Pair")
     totals_table <- newTable(sum_counts, "Overall Mutations") 
+    
+
     p <- newParagraph( paste("Counts of coding and non-coding mutations from", input_file_name, ".\n Interval file:", interval_file_name, "contains", interval_mb, "Mb"))
 
    # Phase 2: assemble report structure bottom-up
@@ -340,17 +352,33 @@ if( ! file.exists(outputdir) ){
     print("Output directory doesn't exist.  Creating it.")
     dir.create(outputdir)
 }
-
  
+
 
 intervals <- read_interval_file(interval_file)
 maf <- prepare_data(inputfile, intervals)
 
-create_mutation_stats_report(inputfile, interval_file, maf, sum(width(intervals)) )
+matches <- function(values, comparison){
+    ifelse(comparison == values | comparison == "all", T, F)
+}
+per_pair_counts <- ddply(maf, .( Coding, in_interval, Variant_Type, Pair), summarize, count = length(Variant_Type))
+all_pair <- ddply(per_pair_counts, .(Coding, Variant_Type, Pair), summarize,  count=sum(count))
 
-draw_graphs(outputdir, "all", maf) 
-draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
-draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
+figures <- draw_graphs(outputdir, "all", maf) 
+report <- newCustomReport("Test report")
+section <-  newSection("section")
+print(paste("figures:", length(figures)))
+print(figures)
 
-draw_graphs(outputdir, "in_interval", maf[maf$in_interval == TRUE,])
-draw_graphs(outputdir, "not_in_interval", maf[maf$in_interval == FALSE,])
+for( i in (1:length(figures))){
+    section <- addTo(section, figures[[i]] )
+}
+
+report <- addTo(report, section)
+writeReport( report, "testing" )
+
+#draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
+#draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
+
+#draw_graphs(outputdir, "in_interval", maf[maf$in_interval == TRUE,])
+#draw_graphs(outputdir, "not_in_interval", maf[maf$in_interval == FALSE,])
