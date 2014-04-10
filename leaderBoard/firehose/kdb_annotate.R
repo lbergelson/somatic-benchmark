@@ -1,4 +1,4 @@
-#===========================================
+#"===========================================
 #
 # KDB ANNOTATE
 # DESCRIPTION: Will add annotation column to maf or call stats column based on true status in kdb
@@ -52,12 +52,20 @@ if (toupper(type) %in% c("WEX", "EXOME", "CODING")) {
 	kdb = kdb[kdb$Variant_Classification %in% cols,]
 }
 
+#adjust incase oncotator changes our column names
+if("i_Status" %in% colnames(kdb)){
+    kdb$Status <- kdb$i_Status
+}
+
 kdb_tp = subset(kdb, kdb$Status %in% "TP")
 kdb_fp = subset(kdb, !kdb$Status %in% "TP")
 
 annotating_maf <- function(maf, kdb_tp, kdb_fp) {
 #	main implementation function to annotate maf by kdb
 	if(nrow(maf) > 0){ 
+        print(maf$key)
+        print(kdb_tp$key)
+        print(kdb_fp$key)
 		maf$kdb_annotation <- "Novel"
 		maf[maf$key %in% kdb_tp$key,"kdb_annotation"] <- rep("TP", sum(maf$key %in% kdb_tp$key))
 		maf[maf$key %in% kdb_fp$key, "kdb_annotation"] <- rep("FP", sum(maf$key %in% kdb_fp$key))
@@ -107,15 +115,15 @@ fn_indels <- getIndels(fn)
 fn_snps <- getSnps(fn)
 
 summary_table = NULL
-summary_table$tp_snp = sum(snps$kdb_annotation %in% "TP")
-summary_table$fp_snp = sum(snps$kdb_annotation %in% "FP")
-summary_table$novel_snp = sum(snps$kdb_annotation %in% "Novel") 
-summary_table$fn_snp = dim(fn_snps)[1]
+summary_table$tp_snp = sum(snps$kdb_annotation == "TP")
+summary_table$fp_snp = sum(snps$kdb_annotation == "FP")
+summary_table$novel_snp = sum(snps$kdb_annotation == "Novel") 
+summary_table$fn_snp = nrow(fn_snps)
 
-summary_table$tp_indel = sum(indels$kdb_annotation %in% "TP")
-summary_table$fp_indel = sum(indels$kdb_annotation %in% "FP")
-summary_table$novel_indel = sum(indels$kdb_annotation %in% "Novel") 
-summary_table$fn_indel = dim(fn_indels)[1]
+summary_table$tp_indel = sum(indels$kdb_annotation == "TP")
+summary_table$fp_indel = sum(indels$kdb_annotation == "FP")
+summary_table$novel_indel = sum(indels$kdb_annotation == "Novel") 
+summary_table$fn_indel = nrow(fn_indels)
 
 write.delim(fn, file=paste0(pair, ".false_negatives.maf"))
 write.delim(out, file=paste0(pair, ".kdb_annotated.maf"))
