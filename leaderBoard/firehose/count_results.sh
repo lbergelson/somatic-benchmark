@@ -1,5 +1,5 @@
-if [ "$#" -ne 11 ]; then
-    echo "usage: $0 <libdir> <run_type=NN|NormalNormal|KDB|HCC1143|HCC1954> <evaluation_maf> <comparison maf> <output prefix> <individual> <caller> <caller version> <task workspace name> <tumor bam> <normal bam>"
+if [ "$#" -ne 12 ]; then
+    echo "usage: $0 <libdir> <run_type=NN|NormalNormal|KDB|HCC1143|HCC1954> <evaluation_maf> <comparison maf> <output prefix> <individual> <caller> <caller version> <task workspace name> <tumor bam> <normal bam> <interval file>"
 	exit 1
 fi
 
@@ -14,6 +14,7 @@ version=$8
 workspace=$9
 tumor=${10}
 normal=${11}
+interval=${12}
 
 echo "libdir=$libdir"
 echo "run_type=$run_type"
@@ -38,7 +39,7 @@ case "$run_type" in
 	;;
 "KDB"|"HCC1143"|"HCC1954")
 	echo "Comparing to kdb."
-	Rscript $libdir/kdb_annotate.R $libdir $evaluation_maf $comparison_maf WEX $output_prefix
+	Rscript $libdir/kdb_annotate.R $libdir $evaluation_maf $comparison_maf $output_prefix WEX $interval
 	;;
 *)
 	echo "$run_type is not recognized."
@@ -59,4 +60,4 @@ paste $output <( echo -e $bonusheader $bonusInfo ) > ${output}.annotated
 
 echo "Updating database with new results"
 echo "uploading ${output}.annotated"
-bash update_website.sh $libdir $output.annotated
+bash $libdir/update_website.sh $libdir $output.annotated

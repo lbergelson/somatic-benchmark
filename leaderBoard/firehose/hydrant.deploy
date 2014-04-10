@@ -1,0 +1,45 @@
+[task]
+
+####
+# The name of the project.  If not provided, this will default to
+# the name of the directory containing this file.
+####
+name: EvaluateForLeaderboard
+
+####
+# Module version
+####
+
+####
+# Command line to be invoked to run this job
+#
+# To reference any files that are part of this module, prefix with <libdir>.
+####
+#<libdir> <run_type=NN|NormalNormal|KDB|HCC1143|HCC1954> <evaluation_maf> <comparison maf> <output prefix> <individual> <caller> <caller version> <task config name> <tumor bam> <normal bam>"
+command: bash <libdir>count_results.sh <libdir> ${t run_type} ${t evaluation_maf} ${t comparison_maf} ${t output_prefix} ${t individual} ${t caller_name} ${t caller_version} ${t workspace_name} ${t tumor_bam} ${t normal_bam}
+
+####
+# Task description
+####
+description: Reads a maf and generates a summary file for the leaderboard.
+
+####
+# Colon separated list of directories to be included in this project
+####
+projectDirs: .
+
+####
+# buildDir is the directory (relative to hydrant.deploy) where the build command will be run
+####
+#buildDir: .
+#build:
+
+####
+# directory (relative to buildDir) where executables will be stored.  Defaults to
+####
+#execDir: .
+
+[runtime]
+#executor: LSF
+#max_memory: 1
+#lsf_queue:
