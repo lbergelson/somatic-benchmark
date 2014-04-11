@@ -53,6 +53,7 @@ indel_cols = c(common_cols, c("tp_indel","fp_indel","fn_indel","novel_indel","pr
 print(snp_cols)
 print(indel_cols)
 
+
 stat_1143_s <- stats_summary[grepl("HCC1143",stats_summary$EvaluationGroup),snp_cols]
 stat_1143_i <- stats_summary[grepl("HCC1143",stats_summary$EvaluationGroup),indel_cols]
 
@@ -61,14 +62,14 @@ stat_1954_i <- stats_summary[grepl("HCC1954",stats_summary$EvaluationGroup),inde
 
 stat_nn <- stats_summary[grepl("NormalNormal",stats_summary$EvaluationGroup), c(common_cols, c("fp_snp", "fp_indel"))]
 
-t_1143_s <- newTable( stat_1143_s, "HCC1143 Snps" ); # w/ caption
-t_1143_i <- newTable( stat_1143_i, "HCC1143 Indels" ); # w/ caption
+t_1143_s <- newTable( stat_1143_s, significantDigits=4, "HCC1143 Snps" ); # w/ caption
+t_1143_i <- newTable( stat_1143_i, significantDigits=4, "HCC1143 Indels" ); # w/ caption
 
-t_1954_s <- newTable( stat_1954_s, "HCC1954 Snps" );
-t_1954_i <- newTable( stat_1954_i, "HCC1954 Indels" );
+t_1954_s <- newTable( stat_1954_s, significantDigits=4,"HCC1954 Snps" );
+t_1954_i <- newTable( stat_1954_i, significantDigits=4,"HCC1954 Indels" );
 
-t_nn <- newTable(stat_nn, "Normal-Normal Stats");
-t_complete <- newTable(stats, "Complete unaggregated calls")
+t_nn <- newTable(stat_nn, significantDigits=4,"Normal-Normal Stats");
+t_complete <- newTable(stats, significantDigits=4,"Complete unaggregated calls")
 
 # Phase 2: assemble report structure bottom-up
 hcc1143 <- addTo(hcc1143, t_1143_s,t_1143_i)
