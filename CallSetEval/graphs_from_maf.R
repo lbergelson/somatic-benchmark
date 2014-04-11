@@ -179,38 +179,38 @@ log_breaks <- function(max){
 #graphs that make sense for snps and indels together or apart
 shared_graphs <- function(maf, outputdir, prefix){
       figures <- list()
-      save_with_name <- bind_save_function(outputdir, prefix) 
+      create_figure <- bind_save_function(outputdir, prefix) 
          
       samples <- length( unique(maf$Pair_ID))
 
       
       ggplot(maf, aes(x=Tumor_Depth, y= allele_fraction)) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
-      save_with_name("allele_fraction_vs_tumor_depth")
+      figures <- c(figures, list(create_figure("allele_fraction_vs_tumor_depth")))
 
       ggplot(maf, aes(x=Tumor_Depth, y= t_alt_count)) +scale_y_log10(breaks = log_breaks(max(maf$t_alt_count)), minor_breaks = c()) +stat_binhex(bins=100)+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
-      save_with_name("altreads_vs_tumor_depth")
+      figures <- c(figures, list(create_figure("altreads_vs_tumor_depth")))
 
       qplot(data=maf,x=t_alt_count, fill=Classification, binwidth=1) + theme_bw()
-      save_with_name("alt_reads_all_samples") 
+      figures <- c(figures, list(create_figure("alt_reads_all_samples") ))
  
       qplot(data=maf,x=allele_fraction, fill=Classification) + theme_bw()
-      save_with_name("allele_fraction_all_samples") 
+      figures <- c(figures, list(create_figure("allele_fraction_all_samples")))
       
       qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4)+theme_bw() + theme(strip.text.x = element_text(size=4))
-      save_with_name("allele_fraction_by_sample", height=max(samples/4,4))
+      figures <- c(figures, list(create_figure("allele_fraction_by_sample", height=max(samples/4,4))))
       
       qplot(data=maf, x=allele_fraction, fill=Classification) + facet_wrap(facets=~Pair_ID, ncol=4, scales="free_y") +theme_bw() + theme(strip.text.x = element_text(size=4))
-      save_with_name("allele_fraction_by_sample_normalized", height=max(samples/4,4), width=10)
+      figures <- c(figures, list(create_figure("allele_fraction_by_sample_normalized", height=max(samples/4,4), width=10)) )
       
-      plot_percentage_and_count(maf, "Classification", paste0(prefix,"_COSMIC_overlap_by_sample"), outputdir)
+      figures <- c(figures, list(plot_percentage_and_count(maf, "Classification", paste0(prefix,"_COSMIC_overlap_by_sample"), outputdir))) 
 
-      plot_percentage_and_count(maf, "in_interval", paste0(prefix,"_in_interval_by_sample"), outputdir)
+      figures <- c(figures, list(plot_percentage_and_count(maf, "in_interval", paste0(prefix,"_in_interval_by_sample"), outputdir)) )
       
       qplot(data=maf, x=Tumor_Depth, fill=Classification) + theme_bw() + scale_x_tumor_depth(maf)
-      save_with_name("tumor_depth_all_samples")
+      figures <- c(figures, list(create_figure("tumor_depth_all_samples")) )
       
       qplot(data=maf, x=Tumor_Depth, fill=Classification, facets= ~in_interval) + theme_bw() + scale_x_tumor_depth(maf)
-      save_with_name("tumor_depth_all_samples_by_territory")
+      figures <- c(figures, list(create_figure("tumor_depth_all_samples_by_territory")))
 
       return(figures)
 }
@@ -226,7 +226,7 @@ draw_graphs <- function(basedir, subdir, maf){
         dir.create(outputdir)
     }
     
-    save_with_name <- bind_save_function(outputdir, subdir)
+    create_figure <- bind_save_function(outputdir, subdir)
     #first draw graphs for all variants
     shared_figures <- shared_graphs(maf, outputdir, paste0(subdir,"_all_variants"))
     figures <- c(figures,shared_figures)
@@ -239,10 +239,10 @@ draw_graphs <- function(basedir, subdir, maf){
         
         if("i_t_lod_fstar" %in% colnames(snps_only)){
             qplot(data=snps_only, x=i_t_lod_fstar, fill=Classification)+scale_x_log10(breaks=log_breaks(max(snps_only$i_t_lod_fstar)), minor_breaks=c())+theme_bw()
-            figures <- c(figures, list(save_with_name("snp_lod_score")))
+            figures <- c(figures, list(create_figure("snp_lod_score")))
 
             ggplot(snps_only, aes(x=Tumor_Depth, y= i_t_lod_fstar)) +stat_binhex(bins=100)+scale_y_log10(breaks=log_breaks(max(snps_only$i_t_lod_fstar)), minor_breaks=c())+ scale_fill_gradientn( colours=c("white","red")) + scale_x_tumor_depth(maf)
-            figures <- c(figures, list(save_with_name("snp_lod_score_vs_tumor_depth")))
+            figures <- c(figures, list(create_figure("snp_lod_score_vs_tumor_depth")))
         } else {
             print("no lod score in maf")
         }
@@ -258,13 +258,13 @@ draw_graphs <- function(basedir, subdir, maf){
         ggplot(data=maf)+ geom_bar(subset=.(Variant_Type == "DEL"), binwidth=1, aes(x=Indel_Length,y=-..count..,fill=Variant_Classification,stat="identity")) +
              geom_bar(subset=.(Variant_Type=="INS"), binwidth=1, aes(x=Indel_Length,y=..count.., fill=Variant_Classification, stat="identity")) +
              ylab("Deletions - Insertions") + theme_bw()
-        save_with_name("stacked_indel_lengths", height=5, width=7)
+        figures <- c(figures, list(create_figure("stacked_indel_lengths", height=5, width=7)))
         
         ggplot(data=indels_only)+ geom_bar( binwidth=1, aes(x=Indel_Length,y=..count..,fill=Variant_Classification,stat="identity"))+
             facet_wrap(facets=~Variant_Type, drop=TRUE) + theme_bw()
-        save_with_name("indel_lengths_by_type", height=5, width=7)
+        figures <- c(figures, list(create_figure("indel_lengths_by_type", height=5, width=7)))
         
-        plot_percentage_and_count(indels_only, "Variant_Classification", "indels_by_type", outputdir)
+        figures <- c(figures, list(plot_percentage_and_count(indels_only, "Variant_Classification", "indels_by_type", outputdir)))
 
     } else {
         print("no indels in maf")
@@ -277,6 +277,10 @@ draw_graphs <- function(basedir, subdir, maf){
 
 create_mutation_stats_report <- function(input_file_name, interval_file_name, maf, interval_size){
     require( Nozzle.R1 )
+    rate <- function(x){
+        mean(x) / interval_mb
+    }
+
    
     maf[maf$Variant_Type %in% c("INS","DEL"),]$Variant_Type <- "INDEL"
     
@@ -286,11 +290,46 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     
     all_pair <- ddply(per_pair_counts, .(Coding, Variant_Type, Pair), summarize,  count=sum(count))
 
-    sum_counts <- ddply(per_pair_counts, .(Coding, in_interval, Variant_Type), here(summarize), total = sum(count), mean = mean(count), rate = ifelse(all(in_interval), mean / interval_mb, NA))
+    #sum_counts <- ddply(per_pair_counts, .(Coding, in_interval, Variant_Type), here(summarize), total = sum(count), mean = mean(count), rate = ifelse(all(in_interval), mean / interval_mb, NA))
+    maf$Interval <- ifelse(maf$in_interval, "In_Interval", "Out_Of_Interval")
+    reduced_maf <- maf[,c("Coding", "Variant_Type", "Interval", "Chromosome")] 
+    head(reduced_maf)
+    melty <- melt(reduced_maf,)
+    sum_counts <- cast(melty, Interval+Coding~Variant_Type+count+countplus, margins=TRUE, c(function(x) length(x), function(x) length(x +1)))
+
     #all_counts <- ddply(sum_counts, .(Coding, Variant_Type), summarize, count = sum( count ), mean=sum(mean), rate = NA)
     ggplot(data=per_pair_counts, aes(x= in_interval, y=count,  fill=Variant_Type)) + geom_boxplot()+ facet_wrap(facets=~Coding) + geom_boxplot(data=all_pair, aes(x="All", y=count, fill=Variant_Type))
     ggsave("summary.pdf")  
     ggsave("summary.png", width=7, height=7) 
+    ###########
+
+    table2 <- newTable( sum_counts,              
+                "Another small table. This table has result summaries associated with it. All ",
+                asParameter( "parameters" ), " shown in the columns of the table need to be explained in the caption." );
+
+    for ( i in 1:dim( sum_counts )[1] )
+    {
+        result1 <- addTo(newResult(""),
+                addTo( newSection( "Result ", i ), newParagraph( "This is a paragraph related to ", sum_counts[i,4], "." ) ) );
+        table2 <- addTo( table2, result1, row=i, column=2 );
+        
+    }
+    
+    
+#    figures <- draw_graphs(outputdir, "all", maf) 
+    report <- newCustomReport("Test report")
+    report <- addTo(report, table2)
+    
+    section <-  newSection("section")
+    
+#    for( i in (1:length(figures))){
+#        section <- addTo(section, figures[[i]] )
+#    }
+    
+    report <- addTo(report, section)
+    writeReport( report, "testing" )
+    #########
+
     # Phase 1: create report elements
     r <- newCustomReport( "Mutations Stats" )
     s <- newSection( "By Sample" )
@@ -304,7 +343,7 @@ create_mutation_stats_report <- function(input_file_name, interval_file_name, ma
     totals_table <- newTable(sum_counts, "Overall Mutations") 
     
 
-    p <- newParagraph( paste("Counts of coding and non-coding mutations from", input_file_name, ".\n Interval file:", interval_file_name, "contains", interval_mb, "Mb"))
+    p <- newParagraph( paste("Counts of coding and non-coding mutations from", input_file_name, ".\ Interval file:", interval_file_name, "contains", interval_mb, "Mb"))
 
    # Phase 2: assemble report structure bottom-up
     ss1 <- addTo( ss1, pairs_table ); # parent, child_1, ..., child_n 
@@ -328,9 +367,6 @@ option_list <- list(
 parsed <- parse_args(OptionParser(option_list=option_list, usage = "Rscript %prog [options] <maf_file>"), print_help_and_exit=TRUE, positional_arguments=1)
 opt <- parsed$options
 positional <- parsed$args
-
-print(paste("positional:",positional))
-print(paste("opts:",opt))
 
 if(length(positional) != 1){
     stop("maf file is a required parameter")
@@ -361,22 +397,11 @@ maf <- prepare_data(inputfile, intervals)
 matches <- function(values, comparison){
     ifelse(comparison == values | comparison == "all", T, F)
 }
+
 per_pair_counts <- ddply(maf, .( Coding, in_interval, Variant_Type, Pair), summarize, count = length(Variant_Type))
 all_pair <- ddply(per_pair_counts, .(Coding, Variant_Type, Pair), summarize,  count=sum(count))
 
-figures <- draw_graphs(outputdir, "all", maf) 
-report <- newCustomReport("Test report")
-section <-  newSection("section")
-print(paste("figures:", length(figures)))
-print(figures)
-
-for( i in (1:length(figures))){
-    section <- addTo(section, figures[[i]] )
-}
-
-report <- addTo(report, section)
-writeReport( report, "testing" )
-
+create_mutation_stats_report(inputfile, interval_file, maf,  sum(width(intervals)))
 #draw_graphs(outputdir, "coding", maf[maf$Coding == "Coding",])
 #draw_graphs(outputdir, "non_coding",maf[maf$Coding == "Non_Coding",])
 
